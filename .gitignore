@@ -1,4 +1,4 @@
 *.o
 *~
 aix-user
-
+tools/ar

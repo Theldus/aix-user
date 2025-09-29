@@ -9,11 +9,16 @@ CFLAGS += $(shell pkg-config --cflags unicorn)
 LDLIBS += $(shell pkg-config --libs unicorn)
 
 .PHONY: all clean
-all: aix-user
+all: aix-user tools/ar
 
 aix-user: vm.o xcoff.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
+tools/ar: tools/ar.o bigar.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
 clean:
 	rm -f *.o
+	rm -f tools/*.o
 	rm -f aix-user
+	rm -f tools/ar

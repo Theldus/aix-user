@@ -489,6 +489,11 @@ clean:
   340: 7400001B 5F5F6D61 6C6C6F63 5F757365 725F6465 66696E65 645F6E61 6D6500
 -bash-4.3# 
 
+-bash-4.3# ldd clean
+clean needs:
+         /usr/lib/libc.a(shr.o)
+         /unix
+         /usr/lib/libcrypt.a(shr.o)
 
 
 

@@ -139,5 +139,6 @@ extern int  xcoff_read_all_sechdrs(struct xcoff *xcoff);
 extern int  xcoff_read_hdrs(struct xcoff *xcoff);
 extern u32  xcoff_get_entrypoint(const struct xcoff *xcoff);
 extern int  xcoff_open(const char *bin, struct xcoff *xcoff);
+extern void xcoff_close(const struct xcoff *xcoff);
 
 #endif /* AIX_COFF_H */

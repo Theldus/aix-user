@@ -336,21 +336,3 @@ void xcoff_close(const struct xcoff *xcoff)
 		close(xcoff->fd);
 	}
 }
-
-
-#if 0
-int main(int argc, char **argv)
-{
-	struct xcoff xcoff = {0};
-
-	if (xcoff_open("clean", &xcoff) < 0)
-		return 1;
-	if (xcoff_read_hdrs(&xcoff) < 0)
-		return 1;
-
-	xcoff_print_filehdr(&xcoff);
-	xcoff_print_auxhdr(&xcoff);
-	xcoff_close(&xcoff);
-	return 0;
-}
-#endif

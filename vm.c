@@ -9,6 +9,7 @@
 #include <unicorn/unicorn.h>
 
 #include "xcoff.h"
+#include "gdb.h"
 
 /**
  * AIX seems to have a kernel memory-mapped are in user-space
@@ -276,6 +277,9 @@ static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
 
 }
 
+
+
+
 /* Main =). */
 int main(int argc, char **argv)
 {
@@ -299,6 +303,10 @@ int main(int argc, char **argv)
 	/* Our 'syscall' handler. */
 	uc_hook_add(uc, &trace, UC_HOOK_CODE, syscall_handler, NULL,
 		SYSCALL_ADDR, SYSCALL_ADDR);
+
+	/* Init GDB stub. */
+	if (gdb_init(uc, 1234) < 0)
+		errx(1, "Unable to start GDB server!\n");
 
 	entry_point = xcoff_get_entrypoint(&xcoff);
 	err = uc_emu_start(uc, entry_point, entry_point+1024, 0, 0);

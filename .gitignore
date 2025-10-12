@@ -1,5 +1,6 @@
 *.o
 *~
+.gdb_history
 aix-user
 tools/ar
 tools/dump

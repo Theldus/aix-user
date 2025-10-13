@@ -309,6 +309,10 @@ static inline void send_gdb_halt_reason(void) {
 	send_gdb_cmd("S05", 3);
 }
 
+/* ------------------------------------------------------------------*
+ * GDB handlers                                                      *
+ * ------------------------------------------------------------------*/
+
 /**/
 static const int regs_to_be_read[] = {
 	UC_PPC_REG_0,  UC_PPC_REG_1,  UC_PPC_REG_2,   UC_PPC_REG_3,
@@ -350,10 +354,6 @@ static void handle_gdb_read_registers(uc_engine *uc)
 		warn("Unable to read GPRs...\n");
 		return;
 	}
-
-	printf("Regs:\n");
-	for (i = 0; i < PPC_REGS_AMNT; i++)
-		printf("r%02d: %08x\n", i, ppcregs.u32_vals[i]);
 
 	/* Convert registers to big-endian for GDB. */
 	for (i = 0; i < PPC_REGS_AMNT; i++)
@@ -400,9 +400,19 @@ static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
 	if (!dump_buff)
 		errx(1, "GDBStub: Unable to alloc %u bytes!\n", amnt);
 
+	/*
+	 * For some reason, GDB insists on reading the addr 0x0
+	 * so I'm just cutting some shortcuts here:
+	 */
+	if (addr == 0) {
+		send_gdb_error();
+		return -1;
+	}
+
 	if (uc_mem_read(uc, addr, dump_buff, amnt)) {
-		warn("Unable to read from VM memory: %x\n", addr);
+		warn("Unable to read from VM memory: 0x%08x\n", addr);
 		free(dump_buff);
+		send_gdb_error();
 		return -1;
 	}
 
@@ -412,6 +422,15 @@ static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
 
 	return 0;
 }
+
+/**
+ * @brief Handles the single-step command from GDB.
+ * @param cont Signals that the execution must proceed.
+ */
+static inline void handle_gdb_single_step(int *cont) {
+	*cont = 1;
+}
+
 
 /**
  * @brief Handle GDB query packets (commands starting with 'q').
@@ -528,6 +547,10 @@ static int handle_gdb_cmd(uc_engine *uc, struct gdb_handle *gh, int *cont)
 	/* Query packets. */
 	case 'q':
 		handle_gdb_query_packets(uc, gh->cmd_buff, sizeof gh->cmd_buff);
+		break;
+	/* Single-step. */
+	case 's':
+		handle_gdb_single_step(cont);
 		break;
 	/* Not-supported messages. */
 	default:
@@ -687,6 +710,9 @@ static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 {
 	int cont = 0;
 	fprintf(stderr, "Inside-GDB single-step!!: %x\n", addr);
+
+	if (cl_fd >= 0)
+		send_gdb_halt_reason();
 	
 	while (!cont) {
 		if (cl_fd < 0) {

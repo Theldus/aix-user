@@ -92,6 +92,51 @@ struct xcoff_csec_func_desc {
 	u32 env_ptr;    /* Environment Pointer (??, no idea what is this). */
 };
 
+/**
+ * Loader section
+ */
+struct xcoff_ldr_hdr32 {
+	u32 l_version; /* Loader section version number.         */
+	u32 l_nsyms;   /* Number of symbol table entries.        */
+	u32 l_nreloc;  /* Number of relocation table entries.    */
+	u32 l_istlen;  /* Length of import file ID string table. */
+	u32 l_nimpid;  /* Number of import file IDs.             */
+	u32 l_impoff;  /* Offset to start of import file IDs.    */
+	u32 l_stlen;   /* Length of string table.         */
+	u32 l_stoff;   /* Offset to start of string table */
+};
+
+/**
+ * Loader symbol table definition.
+ */
+struct xcoff_ldr_sym_tbl_hdr32 {
+	union {              /* l_name or l_offset. */
+		u8 l_name[8];
+		struct {
+			u32 zeroes;
+			u32 offset;
+		} s;
+	} u;
+	u32 l_value;         /* Address field.  */
+	u16 l_secnum;        /* Section number. */
+	u8  l_symtype;       /* Symbol type, export, import flags.          */
+	u8  l_smclass;       /* Symbol storage class.                       */
+	u32 l_ifile;         /* Import file ID; ordinal of import file IDs. */
+	u32 l_parm;          /* Parameter type-check field.                 */
+};
+
+/**
+ *
+ */
+struct xcoff_ldr_rel_tbl_hdr32 {
+	u32 l_vaddr;  /* Virtual address field.                                 */
+	u32 l_symndx; /* Loader section symbol table index of referenced item.
+	               * values of 0,1,2 are ref to .text/.data/.bss. The first
+	               * actual value starts at 3.                              */
+	u32 l_rtype;  /* Relocation type.                                       */
+	u16 l_rsecnm; /* Section number, 1-based.                               */
+};
+
 /* Section flags. */
 #define STYP_TEXT    0x0020 /* Specifies an executable text (code) section.
                                A section of this type contains the executable
@@ -135,8 +180,6 @@ extern void xcoff_print_auxhdr(const struct xcoff *xcoff);
 extern int  xcoff_read_auxhdr(struct xcoff *xcoff);
 extern void xcoff_print_auxhdr(const struct xcoff *xcoff);
 extern void xcoff_print_sechdr(const struct xcoff_sec_hdr32 *sec, int n);
-extern int  xcoff_read_all_sechdrs(struct xcoff *xcoff);
-extern int  xcoff_read_hdrs(struct xcoff *xcoff);
 extern u32  xcoff_get_entrypoint(const struct xcoff *xcoff);
 extern int  xcoff_open(const char *bin, struct xcoff *xcoff);
 extern void xcoff_close(const struct xcoff *xcoff);

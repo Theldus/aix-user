@@ -71,12 +71,6 @@ int main(int argc, char **argv)
 	if (xcoff_open(xcoff_file, &xcoff) < 0)
 		errx(1, "Unable to open XCOFF file '%s'\n", xcoff_file);
 
-	/* Read headers. */
-	if (xcoff_read_hdrs(&xcoff) < 0) {
-		xcoff_close(&xcoff);
-		errx(1, "Unable to read XCOFF headers\n");
-	}
-
 	/* Display requested information. */
 	if (show_all || show_filehdr)
 		xcoff_print_filehdr(&xcoff);

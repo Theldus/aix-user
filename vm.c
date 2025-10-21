@@ -8,8 +8,8 @@
 #include <string.h>
 #include <unicorn/unicorn.h>
 
-#include "xcoff.h"
 #include "gdb.h"
+#include "loader.h"
 
 /**
  * AIX seems to have a kernel memory-mapped are in user-space
@@ -28,11 +28,11 @@
 #define SYS_write 10
 #define SYS_exit  149
 
-#define STACK_ADDR   0x2FF22000
+#define STACK_ADDR   0x30000000
 #define STACK_SIZE   32768ULL    /* in kbytes. */
 
 /* XCOFF file info. */
-static struct xcoff xcoff;
+static struct loaded_coff lcoff;;
 
 /* Unicorn vars. */
 uc_engine *uc;
@@ -52,46 +52,6 @@ static void align(u32 sec_addr, u32 sec_size, u32 *aln_addr, u32 *aln_size)
 }
 
 /**
- * @brief Init a given section pointed by @p sec.
- *
- * @param xcoff XCOFF32 structure pointer.
- * @param sec   XCOFF32 section pointer.
- *
- * @return Returns 0 if success, a negative number otherwise.
- *
- * @note This is not very generic and doesn't handle when sections
- * overlap each other, such .bss and .data, think a way to solve
- * this.
- */
-static int vm_init_section(struct xcoff *xcoff, struct xcoff_sec_hdr32 *sec)
-{
-	u32 addr;
-	u32 size;
-
-	if (!sec->s_size) {
-		warn("Section should have a valid size (!= 0)\n");
-		return -1;
-	}
-	align(sec->s_paddr, sec->s_size, &addr, &size);
-
-	if (uc_mem_map(uc, addr, size, UC_PROT_ALL)) {
-		warn("Unable to map memory for section: %x (%d)!\n", addr, size);
-		return -1;
-	}
-
-	if (!(sec->s_flags & STYP_BSS)) {
-		if (uc_mem_write(uc, sec->s_paddr, xcoff->buff+sec->s_scnptr, 
-			sec->s_size))
-		{
-			warn("Unable to write section contents!\n");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-/**
  * @brief Init the VM memory layout for the executable pointed
  * at @p xcoff.
  *
@@ -99,16 +59,10 @@ static int vm_init_section(struct xcoff *xcoff, struct xcoff_sec_hdr32 *sec)
  *
  * @return Returns 0 if succcess, -1 otherwise.
  */
-static int vm_init_memory(struct xcoff *xcoff)
+static int vm_init_memory(void)
 {
 	/* Stack. */
 	uc_mem_map(uc, STACK_ADDR, STACK_SIZE*1024*1024, UC_PROT_ALL);
-
-	/* Text. */
-	if (vm_init_section(xcoff, &xcoff->secs[xcoff->aux.o_sntext-1]) < 0)
-		return -1;
-
-	/* Data/BSS not needed for now!. */
 
 	/* Syscall/"kernel" entry point. */
 	uc_mem_map(uc, 0x3000, 4096, UC_PROT_ALL);
@@ -125,7 +79,7 @@ static int vm_init_memory(struct xcoff *xcoff)
  *
  * For the moment, only stack pointer and TOC.
  */
-static int vm_init_registers(struct xcoff *xcoff)
+static int vm_init_registers(struct loaded_coff *lcoff)
 {
 	int r;
 
@@ -134,7 +88,7 @@ static int vm_init_registers(struct xcoff *xcoff)
 	uc_reg_write(uc, UC_PPC_REG_1, &r);
 
 	/* TOC Anchor in r2. */
-	r = xcoff->aux.o_toc;
+	r = lcoff->xcoff.aux.o_toc;
 	uc_reg_write(uc, UC_PPC_REG_2, &r);
 
 	return 0;
@@ -283,22 +237,23 @@ static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
 /* Main =). */
 int main(int argc, char **argv)
 {
-	uc_err err;
-	uc_hook trace;
 	u32 entry_point;
-
-	if (xcoff_open("clean", &xcoff) < 0)
-		return 1;
-	if (xcoff_read_hdrs(&xcoff) < 0)
-		return 1;
+	uc_hook trace;
+	uc_err err;
+	int ret;
 
 	/* Initialize our AIX+PPC emulator =). */
 	err = uc_open(UC_ARCH_PPC, UC_MODE_PPC32|UC_MODE_BIG_ENDIAN, &uc);
 	if (err)
 		errx(1, "Unable to create VM: %s\n", uc_strerror(err));
 
-	vm_init_memory(&xcoff);
-	vm_init_registers(&xcoff);
+	/* Load executable. */
+	lcoff = load_xcoff_file(uc, "clean", 1, &ret);
+	if (ret < 0)
+		return -1;
+
+	vm_init_memory();
+	vm_init_registers(&lcoff);
 
 	/* Our 'syscall' handler. */
 	uc_hook_add(uc, &trace, UC_HOOK_CODE, syscall_handler, NULL,
@@ -308,7 +263,7 @@ int main(int argc, char **argv)
 	if (gdb_init(uc, 1234) < 0)
 		errx(1, "Unable to start GDB server!\n");
 
-	entry_point = xcoff_get_entrypoint(&xcoff);
+	entry_point = xcoff_get_entrypoint(&lcoff.xcoff);
 	err = uc_emu_start(uc, entry_point, entry_point+1024, 0, 0);
 	if (err)
 		errx(1, "Unable to start VM, error: %s\n", uc_strerror(err));

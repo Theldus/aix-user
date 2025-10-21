@@ -200,7 +200,7 @@ void xcoff_print_sechdr(const struct xcoff_sec_hdr32 *sec, int n)
  *
  * @return Returns 0 if success, a negative number otherwise.
  */
-int xcoff_read_all_sechdrs(struct xcoff *xcoff)
+static int xcoff_read_all_sechdrs(struct xcoff *xcoff)
 {
 	struct xcoff_sec_hdr32 *sec = {0};
 	u32    cur_sec   = XCOFF_FHDR_SIZE+XCOFF_AHDR_SIZE;
@@ -266,12 +266,12 @@ u32 xcoff_get_entrypoint(const struct xcoff *xcoff)
 /**
  *
  */
-int xcoff_read_hdrs(struct xcoff *xcoff)
+static int xcoff_read_hdrs(struct xcoff *xcoff)
 {
 	if (xcoff_read_auxhdr(xcoff) < 0)
-		return 1;
+		return -1;
 	if (xcoff_read_all_sechdrs(xcoff) < 0)
-		return 1;
+		return -1;
 
 	return 0;
 }
@@ -320,8 +320,10 @@ int xcoff_open(const char *bin, struct xcoff *xcoff)
 	if (xcoff->hdr.f_magic != XCOFFF32_MAGIC)
 		warn("Binary file (%s) is not an XCOFF32!!!\n", bin);
 
-	ret = 0;
-	return ret;
+	if (xcoff_read_hdrs(xcoff) < 0)
+		return ret;
+
+	return 0;
 }
 
 /**

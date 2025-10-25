@@ -103,7 +103,7 @@ struct xcoff_ldr_hdr32 {
 	u32 l_nimpid;  /* Number of import file IDs.             */
 	u32 l_impoff;  /* Offset to start of import file IDs.    */
 	u32 l_stlen;   /* Length of string table.         */
-	u32 l_stoff;   /* Offset to start of string table */
+	u32 l_stoff;   /* Offset (from loader sec) to start of string table */
 };
 
 /**
@@ -116,6 +116,9 @@ struct xcoff_ldr_sym_tbl_hdr32 {
 			u32 zeroes;
 			u32 offset;
 		} s;
+		/* EXTRA field I'm adding to hold the memory address from string
+		   table, just because 'why not?', it is 8 bytes anyway. */
+		const char *l_strtblname;                    
 	} u;
 	u32 l_value;         /* Address field.  */
 	u16 l_secnum;        /* Section number. */
@@ -123,7 +126,7 @@ struct xcoff_ldr_sym_tbl_hdr32 {
 	u8  l_smclass;       /* Symbol storage class.                       */
 	u32 l_ifile;         /* Import file ID; ordinal of import file IDs. */
 	u32 l_parm;          /* Parameter type-check field.                 */
-};
+} __attribute__((packed));
 
 /**
  *
@@ -135,6 +138,18 @@ struct xcoff_ldr_rel_tbl_hdr32 {
 	               * actual value starts at 3.                              */
 	u32 l_rtype;  /* Relocation type.                                       */
 	u16 l_rsecnm; /* Section number, 1-based.                               */
+};
+
+/**
+ *
+ */
+union xcoff_impid {
+	const char *v[3];
+	struct {
+		const char *l_impidpath; /* Path string, null-delimited, e.g., /usr/lib\0  */
+		const char *l_impidbase; /* Base string, null-delimited. e.g., libc.a\0    */
+		const char *l_impidmem;  /* Member string, null-delimited, e.g., shr.o\0   */
+	} __attribute__((packed));
 };
 
 /* Section flags. */
@@ -169,7 +184,13 @@ struct xcoff {
 	struct xcoff_file_hdr32 hdr; /* File header.      */
 	struct xcoff_aux_hdr32  aux; /* Auxiliary header. */
 	/* Section headers. */
-	struct xcoff_sec_hdr32 secs[8]; /* All sections. */
+	struct xcoff_sec_hdr32 secs[16]; /* All sections. */
+	/* Loader. */
+	struct {
+		struct xcoff_ldr_hdr32 hdr;
+		union xcoff_impid *impids;
+		struct xcoff_ldr_sym_tbl_hdr32 *symtbl;
+	} ldr;
 };
 
 /* External functions. */
@@ -180,6 +201,8 @@ extern void xcoff_print_auxhdr(const struct xcoff *xcoff);
 extern int  xcoff_read_auxhdr(struct xcoff *xcoff);
 extern void xcoff_print_auxhdr(const struct xcoff *xcoff);
 extern void xcoff_print_sechdr(const struct xcoff_sec_hdr32 *sec, int n);
+extern int  xcoff_read_ldrhdr(struct xcoff *xcoff);
+extern void xcoff_print_ldr(const struct xcoff *xcoff);
 extern u32  xcoff_get_entrypoint(const struct xcoff *xcoff);
 extern int  xcoff_open(const char *bin, struct xcoff *xcoff);
 extern void xcoff_close(const struct xcoff *xcoff);

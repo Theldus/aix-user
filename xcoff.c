@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -238,6 +239,224 @@ static int xcoff_read_all_sechdrs(struct xcoff *xcoff)
 }
 
 /**
+ *
+ */
+static int
+xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
+{
+	struct xcoff_ldr_sym_tbl_hdr32 *st;
+	struct xcoff_ldr_hdr32 *ldr;
+	u32 off;
+	char *p;
+	int i;
+
+	if (!sec || !xcoff)
+		return -1;
+
+	ldr = &xcoff->ldr.hdr;
+	off = sec->s_scnptr + sizeof(*ldr) + (ldr->l_nsyms*sizeof(*st));
+
+	if (xcoff->file_size < off)
+		errx(1, "Invalid symbol tbl!\n");
+
+	xcoff->ldr.symtbl = calloc(ldr->l_nsyms, sizeof(*st));
+	if (!xcoff->ldr.symtbl)
+		errx(1, "Unable to alloc for import IDs!\n");
+
+	p = xcoff->buff + sec->s_scnptr + sizeof(*ldr);
+	for (i = 0; i < ldr->l_nsyms; i++, p += sizeof(*st)) {
+		st = &xcoff->ldr.symtbl[i];
+		memcpy(st, p, sizeof(*st));
+		if (!st->u.s.zeroes)
+			CONV32(st->u.s.offset);
+		
+		CONV32(st->l_value);
+		CONV16(st->l_secnum);
+		CONV32(st->l_ifile);
+		CONV32(st->l_parm);
+	}
+
+	return 0;
+}
+
+/**
+ *
+ */
+static int
+xcoff_read_impids(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
+{
+	struct xcoff_ldr_hdr32 *ldr;
+	char *p, *end;
+	int i, j;
+
+	if (!sec || !xcoff)
+		return -1;
+
+	ldr = &xcoff->ldr.hdr;
+
+	/* Load import IDs. */
+	if (xcoff->file_size < sec->s_scnptr+ldr->l_impoff+ldr->l_istlen)
+		errx(1, "Invalid Import IDs table!\n");
+
+	xcoff->ldr.impids = calloc(ldr->l_nimpid, sizeof(union xcoff_impid));
+	if (!xcoff->ldr.impids)
+		errx(1, "Unable to alloc for import IDs!\n");
+
+	p   = xcoff->buff+sec->s_scnptr+ldr->l_impoff;
+	end = p + ldr->l_istlen;
+
+	for (i = 0; i < ldr->l_nimpid; i++) {
+		/* Read 3 null-delimited strings. */
+		for (j = 0; j < 3; j++) {
+			xcoff->ldr.impids[i].v[j] = p;
+			if (xcoff->ldr.impids[i].v[j][0] == '\0')
+				xcoff->ldr.impids[i].v[j] = NULL;
+
+			while (p < end && *p) {p++;}
+			if (p >= end)
+				return -1;
+			p++; /* Skip nul char. */
+		}
+	}
+	return 0;
+}
+
+/**
+ *
+ */
+static int
+get_section(const struct xcoff *xcoff, const struct xcoff_sec_hdr32 **sec,
+	u32 flags)
+{
+	int i;
+	size_t ntotsecs;
+	const struct xcoff_sec_hdr32 *s;
+
+	if (!xcoff || !sec)
+		return -1;
+
+	for (i = 0; i < xcoff->hdr.f_nscns; i++) {
+		s = &xcoff->secs[i];
+		if (s->s_flags == flags)
+			break;
+	}
+	if (i == xcoff->hdr.f_nscns)
+		return -1;
+
+	*sec = s;
+	return 0;
+}
+
+/**
+ *
+ */
+int xcoff_read_ldrhdr(struct xcoff *xcoff)
+{
+	const struct xcoff_sec_hdr32 *sec = NULL;
+	struct xcoff_ldr_hdr32 *ldr;
+	size_t i;
+
+	if (!xcoff)
+		return -1;
+
+	ldr = &xcoff->ldr.hdr;
+	if (get_section(xcoff, &sec, STYP_LOADER) < 0) {
+		errx(1, "Unable to find loader section!\n");
+		return -1;
+	}
+
+	/* Invalid data?. */
+	if (xcoff->file_size < sec->s_scnptr+sec->s_size)
+		return -1;
+
+	memcpy(ldr, xcoff->buff+sec->s_scnptr, sizeof(*ldr));
+	CONV32(ldr->l_version);
+	CONV32(ldr->l_nsyms);
+	CONV32(ldr->l_nreloc);
+	CONV32(ldr->l_istlen);
+	CONV32(ldr->l_nimpid);
+	CONV32(ldr->l_impoff);
+	CONV32(ldr->l_stlen);
+	CONV32(ldr->l_stoff);
+
+	if (xcoff_read_impids(sec, xcoff) < 0)
+		return -1;
+	if (xcoff_read_symtbl(sec, xcoff) < 0)
+		return -1;
+
+
+	return 0;
+}
+
+/**
+ * @brief Prints a loader header for a given XCOFF32.
+ *
+ * @param xcoff XCOFF32 data pointer.
+ */
+void xcoff_print_ldr(const struct xcoff *xcoff)
+{
+	int i;
+	const char *symname;
+	const struct xcoff_sec_hdr32 *sec;
+	const struct xcoff_ldr_hdr32 *ldr;
+	const struct xcoff_ldr_sym_tbl_hdr32 *st;
+
+	if (!xcoff)
+		return;
+	if (get_section(xcoff, &sec, STYP_LOADER) < 0)
+		return;
+
+	ldr = &xcoff->ldr.hdr;
+	printf("\nXCOFF32 Loader Header:\n"
+		"  l_version: %d\n"
+		"  l_nsyms:   %d\n"
+		"  l_nreloc:  %d\n"
+		"  l_istlen:  %d\n"
+		"  l_nimpid:  %d\n"
+		"  l_impoff:  %d\n"
+		"  l_stlen:   %d\n"
+		"  l_stoff:   %d\n",
+		ldr->l_version, ldr->l_nsyms,  ldr->l_nreloc, ldr->l_istlen,
+		ldr->l_nimpid,  ldr->l_impoff, ldr->l_stlen,  ldr->l_stoff
+	);
+
+	printf("\nLIBPATH: (%s)\n", xcoff->ldr.impids[0].l_impidpath);
+	for (i = 1; i < ldr->l_nimpid; i++) {
+		printf(
+			"Import ID#%d:\n"
+			"  Path:   (%s)\n"
+			"  Base:   (%s)\n"
+			"  Member: (%s)\n",
+			i,
+			xcoff->ldr.impids[i].l_impidpath,
+			xcoff->ldr.impids[i].l_impidbase,
+			xcoff->ldr.impids[i].l_impidmem
+		);
+	}
+
+	printf("\nXCOFF32 Symbol Table:\n");
+	printf("IDX  Value      SecNum SymType SymClass IMPid   Name\n");
+	for (i = 0; i < ldr->l_nsyms; i++) {
+		st = &xcoff->ldr.symtbl[i];
+		printf("%04d 0x%08x 0x%04x 0x%02x    0x%02x     0x%04x  ",
+			i,
+			st->l_value,
+			st->l_secnum,
+			st->l_symtype,
+			st->l_smclass,
+			st->l_ifile);
+
+		if (st->u.s.zeroes != 0)
+			printf("%.*s\n", 8, st->u.l_name);
+		else {
+			symname =  xcoff->buff + sec->s_scnptr + ldr->l_stoff;
+			symname += st->u.s.offset;
+			puts(symname);
+		}
+	}
+}
+
+/**
  * @brief Provided the XCOFF32, read its entrypoint by reading
  * the aux header + function descriptor (stored on .data).
  *
@@ -271,6 +490,8 @@ static int xcoff_read_hdrs(struct xcoff *xcoff)
 	if (xcoff_read_auxhdr(xcoff) < 0)
 		return -1;
 	if (xcoff_read_all_sechdrs(xcoff) < 0)
+		return -1;
+	if (xcoff_read_ldrhdr(xcoff) < 0)
 		return -1;
 
 	return 0;

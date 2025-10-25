@@ -23,9 +23,6 @@
 #define DATA_START 0x20000000
 #define DATA_SIZE  0x1000000  /* 16 MiB. */
 
-#define min(x,y) ((x)<(y)?(x):(y))
-#define max(x,y) ((x)>(y)?(x):(y))
-
 /**
  *
  */
@@ -193,7 +190,6 @@ load_xcoff_file(uc_engine *uc, const char *bin_path, int is_exe, int *ret)
 		text_size  = TEXT_SIZE;
 		data_start = DATA_START;
 		data_size  = DATA_SIZE;
-
 		/* Configure our lcoff. */
 		lcoff.text_start = aux->o_text_start;
 		lcoff.data_start = aux->o_data_start;

@@ -6,7 +6,7 @@
 
 CC     ?= cc
 CFLAGS += $(shell pkg-config --cflags unicorn) -g3
-LDLIBS += $(shell pkg-config --libs unicorn)
+LDLIBS += $(shell pkg-config --libs unicorn) 
 
 .PHONY: all clean
 all: aix-user tools/ar tools/dump

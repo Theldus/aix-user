@@ -22,7 +22,8 @@ static void usage(void)
 		"  -h    Show file header only\n"
 		"  -a    Show auxiliary header only\n"
 		"  -s    Show section headers only\n"
-		"  -A    Show all information (default)\n");
+		"  -A    Show all information (default)\n"
+		"  -l    Show loader header\n");
 	exit(1);
 }
 
@@ -43,6 +44,7 @@ int main(int argc, char **argv)
 	int show_filehdr   = 0;
 	int show_auxhdr    = 0;
 	int show_sechdrs   = 0;
+	int show_loaderhdr = 0;
 	int i;
 
 	if (argc < 2)
@@ -63,6 +65,8 @@ int main(int argc, char **argv)
 			show_sechdrs = 1;
 		else if (!strcmp(option, "-A"))
 			show_all = 1;
+		else if (!strcmp(option, "-l"))
+			show_loaderhdr = 1;
 		else
 			usage();
 	}
@@ -84,6 +88,9 @@ int main(int argc, char **argv)
 			xcoff_print_sechdr(&xcoff.secs[i], i + 1);
 		}
 	}
+
+	if (show_all || show_loaderhdr)
+		xcoff_print_ldr(&xcoff);
 
 	xcoff_close(&xcoff);
 	return 0;

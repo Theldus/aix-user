@@ -212,6 +212,7 @@ extern void xcoff_print_auxhdr(const struct xcoff *xcoff);
 extern int  xcoff_read_auxhdr(struct xcoff *xcoff);
 extern void xcoff_print_auxhdr(const struct xcoff *xcoff);
 extern void xcoff_print_sechdr(const struct xcoff_sec_hdr32 *sec, int n);
+extern void xcoff_print_sechdrs(const struct xcoff *xcoff);
 extern int  xcoff_read_ldrhdr(struct xcoff *xcoff);
 extern void xcoff_print_ldr(const struct xcoff *xcoff);
 extern u32  xcoff_get_entrypoint(const struct xcoff *xcoff);

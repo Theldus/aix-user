@@ -82,12 +82,8 @@ int main(int argc, char **argv)
 	if (show_all || show_auxhdr)
 		xcoff_print_auxhdr(&xcoff);
 
-	if (show_all || show_sechdrs) {
-		for (i = 0; i < xcoff.hdr.f_nscns; i++) {
-			printf("\n");
-			xcoff_print_sechdr(&xcoff.secs[i], i + 1);
-		}
-	}
+	if (show_all || show_sechdrs)
+		xcoff_print_sechdrs(&xcoff);
 
 	if (show_all || show_loaderhdr)
 		xcoff_print_ldr(&xcoff);

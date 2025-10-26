@@ -168,30 +168,48 @@ void xcoff_print_auxhdr(const struct xcoff *xcoff)
 }
 
 /**
- * @brief Prints a section header for a given XCOFF32.
+ * @brief Prints a section header for a given XCOFF32 as a single table row.
  *
- * @param xcoff XCOFF32 data pointer.
- * @param n     Section number.
+ * @param sec Section header pointer.
+ * @param n   Section number.
  */
 void xcoff_print_sechdr(const struct xcoff_sec_hdr32 *sec, int n)
 {
 	if (!sec)
 		return;
-	printf("XCOFF32 Section Header #%d:\n"
-		"  s_name:    %s\n"
-		"  s_paddr:   %x\n"
-		"  s_vaddr:   %x\n"
-		"  s_size:    %d\n"
-		"  s_scnptr:  %d\n"
-		"  s_relptr:  %d\n"
-		"  s_lnnoptr: %d\n"
-		"  s_nreloc:  %d\n"
-		"  s_nlnno:   %d\n"
-		"  s_flags:   0x%x\n",
+	printf("%-2d %-8s 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %-6d %-6d 0x%08x\n",
 		n,
-		sec->s_name,   sec->s_paddr,   sec->s_vaddr, sec->s_size, sec->s_scnptr,
-		sec->s_relptr, sec->s_lnnoptr, sec->s_nreloc, sec->s_nlnno, sec->s_flags
+		sec->s_name,
+		sec->s_paddr,
+		sec->s_vaddr,
+		sec->s_size,
+		sec->s_scnptr,
+		sec->s_relptr,
+		sec->s_lnnoptr,
+		sec->s_nreloc,
+		sec->s_nlnno,
+		sec->s_flags
 	);
+}
+
+/**
+ * @brief Prints all section headers for a given XCOFF32 in table format.
+ *
+ * @param xcoff XCOFF32 data pointer.
+ */
+void xcoff_print_sechdrs(const struct xcoff *xcoff)
+{
+	int i;
+
+	if (!xcoff)
+		return;
+
+	printf("\nXCOFF32 Section Headers:\n");
+	printf("#  Name     Paddr      Vaddr      Size       ScnPtr     "
+	       "RelPtr     LnnoPtr    NReloc NLnno  Flags\n");
+
+	for (i = 0; i < xcoff->hdr.f_nscns; i++)
+		xcoff_print_sechdr(&xcoff->secs[i], i + 1);
 }
 
 /**

@@ -242,6 +242,46 @@ static int xcoff_read_all_sechdrs(struct xcoff *xcoff)
  *
  */
 static int
+xcoff_read_reltbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
+{
+	struct xcoff_ldr_rel_tbl_hdr32 *rt;
+	struct xcoff_ldr_hdr32 *ldr;
+	u32 start; /* STart of relocation table.       */
+	u32 off;   /* File offset to end of rel table. */
+	char *p;
+	int i;
+
+	if (!sec || !xcoff)
+		return -1;
+
+	ldr   = &xcoff->ldr.hdr;
+	start = sec->s_scnptr + sizeof(*ldr) +
+		    (ldr->l_nsyms * sizeof(struct xcoff_ldr_sym_tbl_hdr32));
+	
+	off   = start + (ldr->l_nreloc * sizeof(*rt));
+
+	if (xcoff->file_size < off)
+		errx(1, "Invalid relocation table!\n");
+
+	xcoff->ldr.reltbl = calloc(ldr->l_nreloc, sizeof(*rt));
+	if (!xcoff->ldr.reltbl)
+		errx(1, "Unable to alloc for relocation table!\n");
+
+	p = xcoff->buff + start;
+	for (i = 0; i < ldr->l_nreloc; i++, p += sizeof(*rt)) {
+		rt = &xcoff->ldr.reltbl[i];
+		memcpy(rt, p, sizeof(*rt));
+		CONV32(rt->l_vaddr);
+		CONV32(rt->l_symndx);
+		CONV16(rt->l_rsecnm);
+	}
+	return 0;
+}
+
+/**
+ *
+ */
+static int
 xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 {
 	struct xcoff_ldr_sym_tbl_hdr32 *st;
@@ -383,7 +423,8 @@ int xcoff_read_ldrhdr(struct xcoff *xcoff)
 		return -1;
 	if (xcoff_read_symtbl(sec, xcoff) < 0)
 		return -1;
-
+	if (xcoff_read_reltbl(sec, xcoff) < 0)
+		return -1;
 
 	return 0;
 }
@@ -400,6 +441,7 @@ void xcoff_print_ldr(const struct xcoff *xcoff)
 	const struct xcoff_sec_hdr32 *sec;
 	const struct xcoff_ldr_hdr32 *ldr;
 	const struct xcoff_ldr_sym_tbl_hdr32 *st;
+	const struct xcoff_ldr_rel_tbl_hdr32 *rt;
 
 	if (!xcoff)
 		return;
@@ -453,6 +495,18 @@ void xcoff_print_ldr(const struct xcoff *xcoff)
 			symname += st->u.s.offset;
 			puts(symname);
 		}
+	}
+
+	printf("\nXCOFF32 Relocation Table:\n");
+	printf("Vaddr         Symndx      Type|Size    Relsect\n");
+	for (i = 0; i < ldr->l_nreloc; i++) {
+		rt = &xcoff->ldr.reltbl[i];
+		printf("0x%08x    %08d    %02x   %02x      %04x\n",
+			rt->l_vaddr,
+			rt->l_symndx,
+			rt->r_rtype,
+			rt->r_rsize,
+			rt->l_rsecnm);
 	}
 }
 

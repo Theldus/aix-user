@@ -129,14 +129,24 @@ struct xcoff_ldr_sym_tbl_hdr32 {
 } __attribute__((packed));
 
 /**
- *
+ * Relocation table
+ * Note: The IBM's online docs are completely wrong about this structure:
+ * - There is *no* l_value field
+ * - l_rtype is 2 bytes, not 4!
+ * - The structure have 12-bytes, not 16 as implied.
  */
 struct xcoff_ldr_rel_tbl_hdr32 {
 	u32 l_vaddr;  /* Virtual address field.                                 */
 	u32 l_symndx; /* Loader section symbol table index of referenced item.
 	               * values of 0,1,2 are ref to .text/.data/.bss. The first
 	               * actual value starts at 3.                              */
-	u32 l_rtype;  /* Relocation type.                                       */
+	union {             /* Relocation type. */
+		u16 l_rtype;
+		struct {
+			u8 r_rsize;
+			u8 r_rtype;
+		};
+	};
 	u16 l_rsecnm; /* Section number, 1-based.                               */
 };
 
@@ -190,6 +200,7 @@ struct xcoff {
 		struct xcoff_ldr_hdr32 hdr;
 		union xcoff_impid *impids;
 		struct xcoff_ldr_sym_tbl_hdr32 *symtbl;
+		struct xcoff_ldr_rel_tbl_hdr32 *reltbl;
 	} ldr;
 };
 

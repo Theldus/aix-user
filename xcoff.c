@@ -200,7 +200,6 @@ void xcoff_print_sechdr(const struct xcoff_sec_hdr32 *sec, int n)
 void xcoff_print_sechdrs(const struct xcoff *xcoff)
 {
 	int i;
-
 	if (!xcoff)
 		return;
 

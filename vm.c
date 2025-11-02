@@ -10,6 +10,7 @@
 
 #include "gdb.h"
 #include "loader.h"
+#include "mm.h"
 
 /**
  * AIX seems to have a kernel memory-mapped are in user-space
@@ -28,28 +29,13 @@
 #define SYS_write 10
 #define SYS_exit  149
 
-#define STACK_ADDR   0x30000000
-#define STACK_SIZE   32768ULL    /* in kbytes. */
+
 
 /* XCOFF file info. */
 static struct loaded_coff lcoff;;
 
 /* Unicorn vars. */
 uc_engine *uc;
-
-/**
- * @brief For a given address and size, align them to PAGE_SIZE
- * (4096) so Unicorn be happy.
- */
-static void align(u32 sec_addr, u32 sec_size, u32 *aln_addr, u32 *aln_size)
-{
-	u32 sec_end;
-	u32 aln_end;
-	*aln_addr = sec_addr & ~(4096-1); /* Round down. */
-    sec_end   =  sec_addr + sec_size;
-    aln_end   = ((sec_end + 4096-1) / 4096) * 4096; /* Round up. */
-    *aln_size = (u32)(aln_end - *aln_addr);
-}
 
 /**
  * @brief Init the VM memory layout for the executable pointed
@@ -59,17 +45,12 @@ static void align(u32 sec_addr, u32 sec_size, u32 *aln_addr, u32 *aln_size)
  *
  * @return Returns 0 if succcess, -1 otherwise.
  */
-static int vm_init_memory(void)
+static void vm_init_syscalls(void)
 {
-	/* Stack. */
-	uc_mem_map(uc, STACK_ADDR, STACK_SIZE*1024*1024, UC_PROT_ALL);
-
 	/* Syscall/"kernel" entry point. */
 	uc_mem_map(uc, 0x3000, 4096, UC_PROT_ALL);
 	if (uc_mem_write(uc, SYSCALL_ADDR, SYSCALL_HANDLER, sizeof(SYSCALL_HANDLER)-1))
 		errx(1, "Unable to write the syscall handler!\n");
-
-	return 0;
 }
 
 /**
@@ -247,13 +228,14 @@ int main(int argc, char **argv)
 	if (err)
 		errx(1, "Unable to create VM: %s\n", uc_strerror(err));
 
+	mm_init(uc);
+	vm_init_syscalls();
+	vm_init_registers(&lcoff);
+
 	/* Load executable. */
 	lcoff = load_xcoff_file(uc, "clean", 1, &ret);
 	if (ret < 0)
 		return -1;
-
-	vm_init_memory();
-	vm_init_registers(&lcoff);
 
 	/* Our 'syscall' handler. */
 	uc_hook_add(uc, &trace, UC_HOOK_CODE, syscall_handler, NULL,

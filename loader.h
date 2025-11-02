@@ -13,10 +13,14 @@
 
 struct loaded_coff {
 	struct xcoff xcoff;
-	u32 text_start;
-	u32 data_start;
-	u32 bss_start;
-	u32 toc_anchor;
+	u32 text_start;    /* Runtime .text base address. */
+	u32 data_start;    /* Runtime .data base address. */
+	u32 bss_start;     /* Runtime .bss base address. */
+	u32 toc_anchor;    /* Runtime TOC anchor address. */
+	/* Deltas. */
+	u32 text_delta;    /* .text relocation offset (0 for main exe). */
+	u32 data_delta;    /* .data relocation offset (0 for main exe). */
+	u32 bss_delta;     /* .bss relocation offset  (0 for main exe). */
 };
 
 extern struct loaded_coff load_xcoff_file(uc_engine *uc, const char *bin_path,

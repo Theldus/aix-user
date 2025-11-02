@@ -58,8 +58,8 @@ load_xcoff_file(uc_engine *uc, const char *bin_path, int is_exe, int *ret)
 			&lcoff);
 	}
 
-	mm_write_text(&lcoff);
-	mm_write_data(&lcoff);
+	mm_write_text(&lcoff, is_exe);
+	mm_write_data(&lcoff, is_exe);
 
 	*ret = 0;
 	return lcoff;

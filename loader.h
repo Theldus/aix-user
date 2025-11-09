@@ -21,7 +21,6 @@ struct loaded_coff {
 	struct xcoff  xcoff;
 	struct big_ar bar;
 	const char *name;
-	int is_exe;
 
 	/* Relocations. */
 	u32 text_start;    /* Runtime .text base address. */

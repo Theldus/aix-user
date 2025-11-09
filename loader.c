@@ -39,13 +39,13 @@ static void push_coff(struct loaded_coff *lc)
 /**
  *
  */
-const char *get_bin_path(const char *bin, const char *member_name) {
-	static char path[2048] = {0};
+const char *
+get_bin_path(char *buff, size_t size, const char *bin, const char *member_name) {
 	if (member_name)
-		snprintf(path, sizeof path - 1, "%s_%s", bin, member_name);
+		snprintf(buff, size - 1, "%s_%s", bin, member_name);
 	else
-		snprintf(path, sizeof path - 1, "%s", bin);
-	return path;
+		snprintf(buff, size - 1, "%s", bin);
+	return buff;
 }
 
 /**
@@ -57,7 +57,7 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 {
 	union xcoff_impid *impids;
 	struct loaded_coff *head;
-	const char *path;
+	char path[2048] = {0};
 
 	if (!imp_sym || !lc)
 		return NULL;
@@ -68,8 +68,9 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 
 	head   = loaded_modules;
 	impids = lc->xcoff.ldr.impids;
-	path   = get_bin_path(impids[imp_sym->l_ifile].l_impidbase,
-		                  impids[imp_sym->l_ifile].l_impidmem);
+	get_bin_path(path, sizeof path,
+	             impids[imp_sym->l_ifile].l_impidbase,
+	             impids[imp_sym->l_ifile].l_impidmem);
 	
 	/*
 	 * If the current iterated XCOFF matches the name we're searching,
@@ -213,6 +214,7 @@ static void
 load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 {
 	size_t size;
+	char path[2048] = {0};
 	const char *buff;
 
 	/* Load an executable or an XCOFF32 library. */
@@ -238,7 +240,8 @@ load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 				member, bin);
 	}
 
-	lc->name = strdup(get_bin_path(bin, member));
+	get_bin_path(path, sizeof path, bin, member);
+	lc->name = strdup(path);
 	if (!lc->name)
 		errx(1, "Unable to associate name with the XCOFF!\n");
 }

@@ -131,6 +131,13 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 		if (!(imp_sym[i].l_symtype & L_EXPORT))
 			continue;
 
+		/*
+		 * Note: AIX libraries export function descriptors (in .data) for functions,
+		 * not raw code addresses. So imp_sym[i].l_value points to the descriptor
+		 * (already relocated on load module), containing [func_addr, toc_anchor,
+		 * env]. Variables are exported as direct addresses. No distinction
+		 * needed here.
+		 */
 		if (!strcmp(cur_sym->u.l_strtblname, imp_sym[i].u.l_strtblname))
 			return imp_sym[i].l_value;
 	}
@@ -184,12 +191,16 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 		/* Addr containing the addr to be relocated. */
 		addr = rt[i].l_vaddr + lc->deltas[ rt[i].l_rsecnm - 1 ];
 
-		/* Sections relocations. */
+		/* Section relocations (symndx 0/1/2 = .text/.data/.bss).
+		 * The value at this address points into that section and
+		 * needs adjustment if the section moved (delta != 0). */
 		if (rt[i].l_symndx < 3) {
 			/* Read the value & relocate it. */
 			value = mm_read_u32(addr, &ret);
 			if (ret < 0)
 				errx(1, "Unable to read address 0x%x to relocate!\n", addr);
+			
+			/* Add section-specific delta to adjust the pointer */
 			value += lc->deltas[rt[i].l_symndx];
 		}
 		/* Imports. */

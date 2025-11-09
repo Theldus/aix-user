@@ -18,6 +18,12 @@
 #define XCOFFF32_MAGIC 0x01DF
 #define XCOFFF64_MAGIC 0x01F7
 
+/* Symbol types. */
+#define	L_WEAK		0x08
+#define	L_EXPORT	0x10
+#define	L_ENTRY		0x20
+#define	L_IMPORT	0x40
+
 /**
  * 32-bit file header
  */
@@ -32,7 +38,7 @@ struct xcoff_file_hdr32 {
 };
 
 /**
- * 32-bit section heaer.
+ * 32-bit section header.
  */
 struct xcoff_sec_hdr32 {
 	u8 s_name[8];  /* 8-byte null-padded section name.                       */
@@ -189,7 +195,7 @@ union xcoff_impid {
  */
 struct xcoff {
 	int    fd;
-	char   *buff;
+	const char *buff;
 	size_t file_size;
 	struct xcoff_file_hdr32 hdr; /* File header.      */
 	struct xcoff_aux_hdr32  aux; /* Auxiliary header. */
@@ -216,6 +222,7 @@ extern void xcoff_print_sechdrs(const struct xcoff *xcoff);
 extern int  xcoff_read_ldrhdr(struct xcoff *xcoff);
 extern void xcoff_print_ldr(const struct xcoff *xcoff);
 extern u32  xcoff_get_entrypoint(const struct xcoff *xcoff);
+extern int xcoff_load(int fd, const char *buff, size_t size, struct xcoff *xcoff);
 extern int  xcoff_open(const char *bin, struct xcoff *xcoff);
 extern void xcoff_close(const struct xcoff *xcoff);
 

@@ -32,7 +32,7 @@
 
 
 /* XCOFF file info. */
-static struct loaded_coff lcoff;;
+static struct loaded_coff *lcoff;;
 
 /* Unicorn vars. */
 uc_engine *uc;
@@ -221,7 +221,6 @@ int main(int argc, char **argv)
 	u32 entry_point;
 	uc_hook trace;
 	uc_err err;
-	int ret;
 
 	/* Initialize our AIX+PPC emulator =). */
 	err = uc_open(UC_ARCH_PPC, UC_MODE_PPC32|UC_MODE_BIG_ENDIAN, &uc);
@@ -230,12 +229,13 @@ int main(int argc, char **argv)
 
 	mm_init(uc);
 	vm_init_syscalls();
-	vm_init_registers(&lcoff);
 
 	/* Load executable. */
-	lcoff = load_xcoff_file(uc, "clean", 1, &ret);
-	if (ret < 0)
+	lcoff = load_xcoff_file(uc, "clean", NULL, 1);
+	if (!lcoff)
 		return -1;
+
+	vm_init_registers(lcoff);
 
 	/* Our 'syscall' handler. */
 	uc_hook_add(uc, &trace, UC_HOOK_CODE, syscall_handler, NULL,
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
 	if (gdb_init(uc, 1234) < 0)
 		errx(1, "Unable to start GDB server!\n");
 
-	entry_point = xcoff_get_entrypoint(&lcoff.xcoff);
+	entry_point = xcoff_get_entrypoint(&lcoff->xcoff);
 	err = uc_emu_start(uc, entry_point, entry_point+1024, 0, 0);
 	if (err)
 		errx(1, "Unable to start VM, error: %s\n", uc_strerror(err));

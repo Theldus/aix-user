@@ -147,9 +147,10 @@ static void mm_alloc_memory(
 	lcoff->text_start = text_runtime;
 	lcoff->data_start = data_runtime;
 	lcoff->bss_start  = bss_runtime;
-	lcoff->text_delta = text_delta;
-	lcoff->data_delta = data_delta;
-	lcoff->bss_delta  = bss_delta;
+
+	lcoff->deltas[TEXT_DELTA] = text_delta;
+	lcoff->deltas[DATA_DELTA] = data_delta;
+	lcoff->deltas[BSS_DELTA]  = bss_delta;
 }
 
 /**
@@ -311,4 +312,29 @@ void mm_write_data(struct loaded_coff *lcoff, int is_exe)
 
 	if (uc_mem_write(g_uc, vaddr, data_buff, aux->o_dsize))
 		errx(1, "Failed to write .data at 0x%x!\n", vaddr);
+}
+
+/**
+ *
+ */
+u32 mm_read_u32(u32 vaddr, int *err)
+{
+	u32 v = 0;
+	if (uc_mem_read(g_uc, vaddr, &v, sizeof v)) {
+		warn("Unable to read a u32 from %x!\n", vaddr);
+		*err = 1;
+	}
+	return v;
+}
+
+/**
+ *
+ */
+int mm_write_u32(u32 vaddr, u32 value)
+{
+	if (uc_mem_write(g_uc, vaddr, &value, sizeof value)) {
+		warn("Unable to write %x into %x!\n", value, vaddr);
+		return -1;
+	}
+	return 0;
 }

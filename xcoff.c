@@ -263,9 +263,9 @@ xcoff_read_reltbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 {
 	struct xcoff_ldr_rel_tbl_hdr32 *rt;
 	struct xcoff_ldr_hdr32 *ldr;
+	const char *p;
 	u32 start; /* STart of relocation table.       */
 	u32 off;   /* File offset to end of rel table. */
-	char *p;
 	int i;
 
 	if (!sec || !xcoff)
@@ -303,8 +303,8 @@ xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 {
 	struct xcoff_ldr_sym_tbl_hdr32 *st;
 	struct xcoff_ldr_hdr32 *ldr;
+	const char *p;
 	u32 off;
-	char *p;
 	int i;
 
 	if (!sec || !xcoff)
@@ -343,7 +343,7 @@ static int
 xcoff_read_impids(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 {
 	struct xcoff_ldr_hdr32 *ldr;
-	char *p, *end;
+	const char *p, *end;
 	int i, j;
 
 	if (!sec || !xcoff)
@@ -569,6 +569,31 @@ static int xcoff_read_hdrs(struct xcoff *xcoff)
 }
 
 /**
+ *
+ */
+int xcoff_load(int fd, const char *buff, size_t size, struct xcoff *xcoff)
+{
+	if (!buff || !xcoff || !size || fd < 0)
+		return -1;
+
+	xcoff->file_size = size;
+	xcoff->buff      = buff;
+
+	if (xcoff_read_filehdr(xcoff) < 0) {
+		warn("Unable to read file hdr!\n");
+		return -1;
+	}
+
+	if (xcoff->hdr.f_magic != XCOFFF32_MAGIC)
+		warn("Binary file is not an XCOFF32!!!\n");
+
+	if (xcoff_read_hdrs(xcoff) < 0)
+		return -1;
+
+	return 0;
+}
+
+/**
  * @brief Open a given XCOFF32 executable file pointed by @p bin,
  * read its contents and to the initial validations.
  *
@@ -582,40 +607,27 @@ static int xcoff_read_hdrs(struct xcoff *xcoff)
  */
 int xcoff_open(const char *bin, struct xcoff *xcoff)
 {
-	int ret;
+	int fd;
+	char *buff;
 	struct stat st = {0};
 
-	ret = -1;
-
 	if (!xcoff)
-		return ret;
+		return -1;
 
-	xcoff->fd = open(bin, O_RDONLY);
-	if (xcoff->fd < 0) {
+	fd = open(bin, O_RDONLY);
+	if (fd < 0) {
 		warn("Unable to open file!\n");
-		return ret;
+		return -1;
 	}
 
-	fstat(xcoff->fd, &st);
-	xcoff->buff = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, xcoff->fd, 0);
-	if (xcoff->buff == MAP_FAILED) {
+	fstat(fd, &st);
+	buff = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (buff == MAP_FAILED) {
 		warn("Unable to mmap xcoff file!\n");
-		return ret;
+		return -1;
 	}
 
-	xcoff->file_size = st.st_size;
-	if (xcoff_read_filehdr(xcoff) < 0) {
-		warn("Unable to read file hdr!\n");
-		return ret;
-	}
-
-	if (xcoff->hdr.f_magic != XCOFFF32_MAGIC)
-		warn("Binary file (%s) is not an XCOFF32!!!\n", bin);
-
-	if (xcoff_read_hdrs(xcoff) < 0)
-		return ret;
-
-	return 0;
+	return xcoff_load(fd, buff, st.st_size, xcoff);
 }
 
 /**
@@ -626,7 +638,7 @@ void xcoff_close(const struct xcoff *xcoff)
 	if (!xcoff)
 		return;
 	if (xcoff->buff) {
-		munmap(xcoff->buff, xcoff->file_size);
+		munmap((char*)xcoff->buff, xcoff->file_size);
 		close(xcoff->fd);
 	}
 }

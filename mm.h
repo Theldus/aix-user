@@ -54,7 +54,9 @@ void mm_write_text(struct loaded_coff *lcoff, int is_exe);
 /* Write .data section to allocated memory. */
 void mm_write_data(struct loaded_coff *lcoff, int is_exe);
 
-
+/* Read/write an u32 value for/to a given address. */
+u32 mm_read_u32(u32 vaddr, int *err);
+int mm_write_u32(u32 vaddr, u32 value);
 
 
 

@@ -261,7 +261,6 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	load_xcoff_or_bigar(bin, member, lcoff);	
 	aux = &lcoff->xcoff.aux;
 	sec = &lcoff->xcoff.secs[aux->o_snbss - 1];
-	lcoff->toc_anchor = aux->o_toc;
 	
 	/*
 	 * Alloc the memory for .text, .data and .bss if the main exec
@@ -280,6 +279,9 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 			sec->s_vaddr,      sec->s_size,
 			lcoff);
 	}
+
+	/* Relocate TOC anchor too. */
+	lcoff->toc_anchor = aux->o_toc + lcoff->deltas[DATA_DELTA];
 
 	push_coff(lcoff);
 

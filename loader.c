@@ -111,6 +111,10 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	int i;
 	
 	/* Look up for the right module and load if not already. */
+	if (cur_sym->l_ifile >= cur_lc->xcoff.ldr.hdr.l_nimpid)
+		errx(1, "Invalid import file ID %d for symbol %s!\n",
+			cur_sym->l_ifile, cur_sym->u.l_strtblname);
+
 	cur_id = &cur_lc->xcoff.ldr.impids[cur_sym->l_ifile];
 	imp_lc = find_module(cur_sym, cur_lc);
 	if (!imp_lc)

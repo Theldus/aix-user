@@ -322,7 +322,7 @@ u32 mm_read_u32(u32 vaddr, int *err)
 	u32 v = 0;
 	if (uc_mem_read(g_uc, vaddr, &v, sizeof v)) {
 		warn("Unable to read a u32 from %x!\n", vaddr);
-		*err = 1;
+		*err = -1;
 	}
 	return v;
 }

@@ -17,12 +17,15 @@
 #include "mm.h"
 #include "util.h"
 
-#define LOADER(...) fprintf(stderr, "[loader] " __VA_ARGS__)
-
+static int g_depth = -1;
+#define LOADER(...) \
+ do { \
+   fprintf(stderr, "[loader] %*s", g_depth, ""); \
+   fprintf(stderr, __VA_ARGS__); \
+ } while (0)
 
 /* Tiny AIX dynamic loader. */
 struct loaded_coff *loaded_modules;
-
 
 /**
  *
@@ -34,7 +37,7 @@ static void push_coff(struct loaded_coff *lc)
 		head = &(*head)->next;
 	*head = lc;
 	lc->next = NULL;
-	LOADER("  Registered in module list\n");
+	LOADER("Registered in module list\n");
 }
 
 /**
@@ -111,6 +114,8 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	const struct loaded_coff *imp_lc;
 	const union xcoff_impid *cur_id;
 	int i;
+
+	g_depth++;
 	
 	/* Look up for the right module and load if not already. */
 	if (cur_sym->l_ifile >= cur_lc->xcoff.ldr.hdr.l_nimpid)
@@ -144,8 +149,10 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 		 * env]. Variables are exported as direct addresses. No distinction
 		 * needed here.
 		 */
-		if (!strcmp(cur_sym->u.l_strtblname, imp_sym[i].u.l_strtblname))
+		if (!strcmp(cur_sym->u.l_strtblname, imp_sym[i].u.l_strtblname)) {
+			g_depth--;
 			return imp_sym[i].l_value;
+		}
 	}
 
 	errx(1, "Unresolved symbol (%s) from (%s)!\n", cur_sym->u.l_strtblname,
@@ -171,6 +178,8 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	sym = lc->xcoff.ldr.symtbl;
 	rt  = lc->xcoff.ldr.reltbl;
 
+	g_depth++;
+
 	/*
 	 * Relocate export symbol address table too:
 	 * These symbols *will* be relocated below, but the address on the table
@@ -191,7 +200,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	/*
 	 * Relocate sections addresses (.text/.data/.bss and IMPORTs)
 	 */	
-	LOADER("  Processing %d relocations (%s)...\n", ldr->l_nreloc, lc->name);
+	LOADER("Processing %d relocations (%s)...\n", ldr->l_nreloc, lc->name);
 	for (i = 0; i < ldr->l_nreloc; i++)
 	{
 		/* Addr containing the addr to be relocated. */
@@ -222,6 +231,8 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 		if (mm_write_u32(addr, value) < 0)
 			errx(1, "Unable to write address relocated into 0x%x\n", addr);	
 	}
+
+	g_depth--;
 }
 
 /**
@@ -234,7 +245,7 @@ load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 	char path[2048] = {0};
 	const char *buff;
 
-	LOADER("Loading: (%s)(%s)\n", bin, member);
+	LOADER("[-] Loading: (%s)(%s)\n", bin, member);
 
 	/* Load an executable or an XCOFF32 library. */
 	if (!member) {
@@ -280,6 +291,8 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	if (!uc || !bin)
 		return lcoff;
 
+	g_depth++;
+
 	lcoff = calloc(1, sizeof(*lcoff));
 	if (!lcoff)
 		errx(1, "Unable to allocate buffer to load new XCOFF!\n");
@@ -306,7 +319,7 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 			lcoff);
 	}
 
-	LOADER("  Allocated: .text=0x%x .data=0x%x .bss=0x%x\n",
+	LOADER("Allocated: .text=0x%x .data=0x%x .bss=0x%x\n",
 		lcoff->text_start, lcoff->data_start, lcoff->bss_start);
 
 	/* Relocate TOC anchor too. */
@@ -319,5 +332,7 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 
 	/* Fix relocs. */
 	process_relocations(uc, lcoff);
+
+	g_depth--;
 	return lcoff;
 }

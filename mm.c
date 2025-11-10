@@ -18,8 +18,8 @@
 
 /* Memory Management. */
 static uc_engine *g_uc = NULL;
-static u32 next_text_base = TEXT_START + TEXT_SIZE;
-static u32 next_data_base = DATA_START + DATA_SIZE;
+static u32 next_text_base = TEXT_START + EXEC_TEXT_SIZE;
+static u32 next_data_base = DATA_START + EXEC_DATA_SIZE;
 
 /**
  * @brief Initialize memory manager with Unicorn instance.
@@ -29,8 +29,8 @@ static u32 next_data_base = DATA_START + DATA_SIZE;
 void mm_init(uc_engine *uc)
 {
 	g_uc = uc;
-	next_text_base = TEXT_START + TEXT_SIZE;
-	next_data_base = DATA_START + DATA_SIZE;
+	next_text_base = TEXT_START + EXEC_TEXT_SIZE;
+	next_data_base = DATA_START + EXEC_DATA_SIZE;
 
 	/* Stack. */
 	if (uc_mem_map(g_uc, STACK_ADDR, STACK_SIZE*1024*1024, UC_PROT_ALL))

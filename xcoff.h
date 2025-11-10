@@ -117,7 +117,7 @@ struct xcoff_ldr_hdr32 {
  */
 struct xcoff_ldr_sym_tbl_hdr32 {
 	union {              /* l_name or l_offset. */
-		u8 l_name[8];
+		char l_name[8];
 		struct {
 			u32 zeroes;
 			u32 offset;

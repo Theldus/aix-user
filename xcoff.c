@@ -303,6 +303,7 @@ xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 {
 	struct xcoff_ldr_sym_tbl_hdr32 *st;
 	struct xcoff_ldr_hdr32 *ldr;
+	const char *symname;
 	const char *p;
 	u32 off;
 	int i;
@@ -324,8 +325,17 @@ xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 	for (i = 0; i < ldr->l_nsyms; i++, p += sizeof(*st)) {
 		st = &xcoff->ldr.symtbl[i];
 		memcpy(st, p, sizeof(*st));
-		if (!st->u.s.zeroes)
+		if (!st->u.s.zeroes) {
 			CONV32(st->u.s.offset);
+			symname =  xcoff->buff + sec->s_scnptr + ldr->l_stoff;
+			symname += st->u.s.offset;
+		} else {
+			symname = st->u.l_name;
+		}
+
+		st->u.l_strtblname = strdup(symname);
+		if (!st->u.l_strtblname)
+			errx(1, "Unable to dup symbol name!\n");
 		
 		CONV32(st->l_value);
 		CONV16(st->l_secnum);
@@ -497,21 +507,14 @@ void xcoff_print_ldr(const struct xcoff *xcoff)
 	printf("IDX  Value      SecNum SymType SymClass IMPid   Name\n");
 	for (i = 0; i < ldr->l_nsyms; i++) {
 		st = &xcoff->ldr.symtbl[i];
-		printf("%04d 0x%08x 0x%04x 0x%02x    0x%02x     0x%04x  ",
+		printf("%04d 0x%08x 0x%04x 0x%02x    0x%02x     0x%04x  %s\n",
 			i,
 			st->l_value,
 			st->l_secnum,
 			st->l_symtype,
 			st->l_smclass,
-			st->l_ifile);
-
-		if (st->u.s.zeroes != 0)
-			printf("%.*s\n", 8, st->u.l_name);
-		else {
-			symname =  xcoff->buff + sec->s_scnptr + ldr->l_stoff;
-			symname += st->u.s.offset;
-			puts(symname);
-		}
+			st->l_ifile,
+			st->u.l_strtblname);
 	}
 
 	printf("\nXCOFF32 Relocation Table:\n");

@@ -34,6 +34,7 @@ static void push_coff(struct loaded_coff *lc)
 		head = &(*head)->next;
 	*head = lc;
 	lc->next = NULL;
+	LOADER("  Registered in module list\n");
 }
 
 /**
@@ -117,6 +118,11 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 			cur_sym->l_ifile, cur_sym->u.l_strtblname);
 
 	cur_id = &cur_lc->xcoff.ldr.impids[cur_sym->l_ifile];
+	LOADER("Resolving import: %s from %s (currently processing: %s)\n",
+		cur_sym->u.l_strtblname,
+		cur_id->l_impidbase,
+		cur_lc->name);
+
 	imp_lc = find_module(cur_sym, cur_lc);
 	if (!imp_lc)
 		imp_lc = load_xcoff_file(uc, cur_id->l_impidbase, cur_id->l_impidmem, 0);
@@ -185,7 +191,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	/*
 	 * Relocate sections addresses (.text/.data/.bss and IMPORTs)
 	 */	
-	LOADER("Relocating: (%s)\n", lc->name);
+	LOADER("  Processing %d relocations (%s)...\n", ldr->l_nreloc, lc->name);
 	for (i = 0; i < ldr->l_nreloc; i++)
 	{
 		/* Addr containing the addr to be relocated. */
@@ -227,6 +233,8 @@ load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 	size_t size;
 	char path[2048] = {0};
 	const char *buff;
+
+	LOADER("Loading: (%s)(%s)\n", bin, member);
 
 	/* Load an executable or an XCOFF32 library. */
 	if (!member) {
@@ -297,6 +305,9 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 			sec->s_vaddr,      sec->s_size,
 			lcoff);
 	}
+
+	LOADER("  Allocated: .text=0x%x .data=0x%x .bss=0x%x\n",
+		lcoff->text_start, lcoff->data_start, lcoff->bss_start);
 
 	/* Relocate TOC anchor too. */
 	lcoff->toc_anchor = aux->o_toc + lcoff->deltas[DATA_DELTA];

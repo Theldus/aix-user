@@ -16,8 +16,13 @@
 #include "loader.h"
 #include "mm.h"
 #include "util.h"
+#include "syscalls.h"
 
 static int g_depth = -1;
+
+#define INCREASE_DEPTH g_depth++
+#define DECREASE_DEPTH g_depth--
+
 #define LOADER(...) \
  do { \
    fprintf(stderr, "[loader] %*s", g_depth, ""); \
@@ -115,7 +120,20 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	const union xcoff_impid *cur_id;
 	int i;
 
-	g_depth++;
+	INCREASE_DEPTH;
+
+	/*
+	 * TODO; Imports with Import #ID0 is a special case where I still have to
+	 * think about, so lets just emit a warning a return an invalid pointer,
+	 * which should later trigger a hook for invalid memory access if there is
+	 * any access on that address.
+	 */
+	if (cur_sym->l_ifile == 0) {
+		LOADER(">> WARNING <<: Import ID#0 for symbol %s, ignoring!\n",
+			   cur_sym->u.l_strtblname);
+		DECREASE_DEPTH;
+		return 0x1111;
+	}
 	
 	/* Look up for the right module and load if not already. */
 	if (cur_sym->l_ifile >= cur_lc->xcoff.ldr.hdr.l_nimpid)
@@ -123,6 +141,13 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 			cur_sym->l_ifile, cur_sym->u.l_strtblname);
 
 	cur_id = &cur_lc->xcoff.ldr.impids[cur_sym->l_ifile];
+
+	/* Special handling for /unix */
+	if (!strcmp(cur_id->l_impidbase, "unix")) {
+		DECREASE_DEPTH;
+		return create_unix_descriptor(cur_sym->u.l_strtblname);
+	}
+
 	LOADER("Resolving import: %s from %s (currently processing: %s)\n",
 		cur_sym->u.l_strtblname,
 		cur_id->l_impidbase,
@@ -137,10 +162,23 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	imp_sym = imp_lc->xcoff.ldr.symtbl;
 
 	for (i = 0; i < imp_ldr->l_nsyms; i++) {
-		/* We're only interested on exported symbols, because we want
-		 * to import an exported symbol =). */
-		if (!(imp_sym[i].l_symtype & L_EXPORT))
+		/* SKip symbols that do not match our search. */
+		if (strcmp(cur_sym->u.l_strtblname, imp_sym[i].u.l_strtblname))
 			continue;
+
+		/* Check if this is a passthrough/re-exported symbol */
+		if (imp_sym[i].l_symtype & L_IMPORT) {
+			/*
+			 * This symbol is re-exported (passthrough).
+			 * Example: executable imports brk from libc, but libc also imports
+			 * brk from /unix. Recursively resolve from the original source.
+			 */
+			LOADER("Passthrough symbol: %s, resolving from %s\n",
+				imp_sym[i].u.l_strtblname,
+				imp_lc->xcoff.ldr.impids[imp_sym[i].l_ifile].l_impidbase);
+
+			return resolve_import(uc, &imp_sym[i], imp_lc);
+		}
 
 		/*
 		 * Note: AIX libraries export function descriptors (in .data) for functions,
@@ -149,10 +187,8 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 		 * env]. Variables are exported as direct addresses. No distinction
 		 * needed here.
 		 */
-		if (!strcmp(cur_sym->u.l_strtblname, imp_sym[i].u.l_strtblname)) {
-			g_depth--;
-			return imp_sym[i].l_value;
-		}
+		DECREASE_DEPTH;
+		return imp_sym[i].l_value;
 	}
 
 	errx(1, "Unresolved symbol (%s) from (%s)!\n", cur_sym->u.l_strtblname,
@@ -178,7 +214,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	sym = lc->xcoff.ldr.symtbl;
 	rt  = lc->xcoff.ldr.reltbl;
 
-	g_depth++;
+	INCREASE_DEPTH;
 
 	/*
 	 * Relocate export symbol address table too:
@@ -232,7 +268,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			errx(1, "Unable to write address relocated into 0x%x\n", addr);	
 	}
 
-	g_depth--;
+	DECREASE_DEPTH;
 }
 
 /**
@@ -245,7 +281,7 @@ load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 	char path[2048] = {0};
 	const char *buff;
 
-	LOADER("[-] Loading: (%s)(%s)\n", bin, member);
+	LOADER("Loading: (%s)(%s)\n", bin, member);
 
 	/* Load an executable or an XCOFF32 library. */
 	if (!member) {
@@ -291,7 +327,7 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	if (!uc || !bin)
 		return lcoff;
 
-	g_depth++;
+	INCREASE_DEPTH;
 
 	lcoff = calloc(1, sizeof(*lcoff));
 	if (!lcoff)
@@ -333,6 +369,6 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	/* Fix relocs. */
 	process_relocations(uc, lcoff);
 
-	g_depth--;
+	DECREASE_DEPTH;
 	return lcoff;
 }

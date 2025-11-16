@@ -28,6 +28,10 @@
 #define STACK_ADDR 0x30000000
 #define STACK_SIZE 32768ULL    /* in kbytes. */
 
+/* Unix function descriptors. */
+#define UNIX_DESC_ADDR 0x0F000000  /* Descriptor heap */
+#define UNIX_DESC_SIZE 0x00100000  /* 1MB for descriptors */
+
 /* Forward declarations. */
 struct loaded_coff;
 

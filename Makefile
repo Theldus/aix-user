@@ -5,13 +5,15 @@
 #
 
 CC     ?= cc
+#CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable -fsanitize=address
+#LDLIBS += $(shell pkg-config --libs unicorn) -fsanitize=address
 CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable
 LDLIBS += $(shell pkg-config --libs unicorn) 
 
 .PHONY: all clean
 all: aix-user tools/ar tools/dump
 
-aix-user: vm.o xcoff.o gdb.o loader.o mm.o bigar.o
+aix-user: vm.o xcoff.o gdb.o loader.o mm.o bigar.o syscalls.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 tools/ar: tools/ar.o bigar.o

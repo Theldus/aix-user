@@ -1,0 +1,171 @@
+wr_ex:     file format aixcoff-rs6000
+
+
+Disassembly of section .text:
+
+10000268 <.__start>:
+10000268:       7c 08 02 a6     mflr    r0
+1000026c:       90 01 00 08     st      r0,8(r1)
+10000270:       93 e1 ff fc     st      r31,-4(r1)
+10000274:       94 21 ff c0     stu     r1,-64(r1)
+10000278:       7c 3f 0b 78     mr      r31,r1
+1000027c:       38 a0 00 06     lil     r5,6
+10000280:       80 82 00 44     l       r4,68(r2)
+10000284:       38 60 00 01     lil     r3,1
+10000288:       48 00 03 71     bl      100005f8 <.write>
+1000028c:       80 41 00 14     l       r2,20(r1)
+10000290:       38 60 00 2a     lil     r3,42
+10000294:       48 00 03 8d     bl      10000620 <._exit>
+10000298:       80 41 00 14     l       r2,20(r1)
+1000029c:       00 00 00 00     .long 0x0
+100002a0:       00 00 20 61     .long 0x2061
+100002a4:       80 01 00 01     l       r0,1(r1)
+100002a8:       00 00 00 34     .long 0x34
+100002ac:       00 08 6d 61     .long 0x86d61
+100002b0:       69 6e 5b 44     xoril   r14,r11,23364
+100002b4:       53 5d 1f 00     rlimi   r29,r26,3,28,0
+        ...
+<other functions>
+
+
+$ md5sum examples/wr_ex/wr_ex
+d98b7ce2008f761e04724728f25fa7d6
+
+
+$ ./tools/dump examples/wr_ex/wr_ex
+
+XCOFF32 File Header:
+  f_magic:  1df
+  f_nscns:  10
+  f_timdat: 1763260898
+  f_symptr: 17690
+  f_nsyms:  10
+  f_opthdr: 72
+
+XCOFF32 Auxiliary Header:
+  o_mflag:  10b
+  o_vstamp: 1
+  o_tsize:  3317
+  o_dsize:  463
+  o_bsize:  540
+  o_entry:  0x20001078
+  o_text_start: 0x10000268
+  o_data_start: 0x20000f5d
+  o_toc:        0x200010b0
+  o_snentry:    2
+  o_sntext:     1
+  o_sndata:     2
+  o_sntoc:      2
+  o_snloader:   4
+  o_snbss:      3
+  o_algntext:   5
+  o_algndata:   4
+  o_modtype:    1L
+  o_cpuflag:    0
+  o_cputype:    0
+  o_maxstack:   0
+  o_maxdata:    0
+  o_debugger:   0
+  o_textpsize:  0
+  o_datapsize:  0
+  o_stackpsize: 0
+  o_flags:      0
+  o_sntdata:    0
+  o_sntbss:     0
+
+XCOFF32 Section Headers:
+#  Name     Paddr      Vaddr      Size       ScnPtr     RelPtr     LnnoPtr    NReloc NLnno  Flags
+1  .text    0x10000268 0x10000268 0x00000cf5 0x00000268 0x00003706 0x00004502 56     4      0x00000020
+2  .data    0x20000f5d 0x20000f5d 0x000001cf 0x00000f5d 0x00003936 0x00000000 38     0      0x00000040
+3  .bss     0x2000112c 0x2000112c 0x0000021c 0x00000000 0x00000000 0x00000000 0      0      0x00000080
+4  .loader  0x00000000 0x00000000 0x0000041f 0x0000112c 0x00000000 0x00000000 0      0      0x00001000
+5  .dwline  0x00000000 0x00000000 0x00000b01 0x0000154c 0x00003ab2 0x00000000 197    0      0x00020010
+6  .dwinfo  0x00000000 0x00000000 0x00000b69 0x0000204e 0x00004264 0x00000000 61     0      0x00010010
+7  .dwabrev 0x00000000 0x00000000 0x000003d6 0x00002bb8 0x00000000 0x00000000 0      0      0x00060010
+8  .dwarnge 0x00000000 0x00000000 0x00000040 0x00002f8e 0x000044c6 0x00000000 4      0      0x00050010
+9  .dwrnges 0x00000000 0x00000000 0x000000c0 0x00002fce 0x00000000 0x00000000 0      0      0x00080010
+10 .dwloc   0x00000000 0x00000000 0x00000678 0x0000308e 0x000044ee 0x00000000 2      0      0x00090010
+
+XCOFF32 Loader Header:
+  l_version: 1
+  l_nsyms:   13
+  l_nreloc:  40
+  l_istlen:  153
+  l_nimpid:  2
+  l_impoff:  824
+  l_stlen:   78
+  l_stoff:   977
+
+LIBPATH: (/opt/freeware/lib/gcc/powerpc-ibm-aix7.2.0.0/13:/opt/freeware/lib/gcc/powerpc-ibm-aix7.2.0.0/13/../../..:/opt/freeware/lib:/usr/lib:/lib)
+Import ID#1:
+  Path:   ((null))
+  Base:   (libc.a)
+  Member: (shr.o)
+
+XCOFF32 Symbol Table:
+IDX  Value      SecNum SymType SymClass IMPid   Name
+0000 0x20001014 0x0002 0x01    0x05     0x0000  __rtinit 
+0001 0x00000000 0x0000 0x40    0x05     0x0001  errno
+0002 0x00000000 0x0000 0x40    0x0a     0x0001  _exit
+0003 0x00000000 0x0000 0x40    0x0a     0x0001  calloc
+0004 0x00000000 0x0000 0x40    0x0a     0x0001  exit
+0005 0x00000000 0x0000 0x40    0x0a     0x0001  write
+0006 0x00000000 0x0000 0x40    0x0a     0x0001  __assert
+0007 0x00000000 0x0000 0x40    0x0a     0x0001  __fd_getdtablesize
+0008 0x00000000 0x0000 0x40    0x0a     0x0001  __strtollmax
+0009 0x00000000 0x0000 0x40    0x0a     0x0001  __mod_init
+0010 0x00000000 0x0000 0x40    0x05     0x0001  __crt0v
+0011 0x00000000 0x0000 0x40    0x05     0x0001  __malloc_user_defined_name
+0012 0x20001078 0x0002 0x21    0x0a     0x0000  __start
+
+XCOFF32 Relocation Table:
+Vaddr         Symndx      Type|Size    Relsect
+0x20001024    00000001    00   1f      0002
+0x2000103c    00000001    00   1f      0002
+0x20000f60    00000001    00   1f      0002
+0x20000f64    00000001    00   1f      0002
+0x20000f6c    00000002    00   1f      0002
+0x20000ff4    00000000    00   1f      0002
+0x20001000    00000002    00   1f      0002
+0x20001004    00000000    00   1f      0002
+0x20001010    00000001    00   1f      0002
+0x20001078    00000000    00   1f      0002
+0x2000107c    00000001    00   1f      0002
+0x20001080    00000000    00   1f      0002
+0x20001084    00000001    00   1f      0002
+0x2000108c    00000000    00   1f      0002
+0x20001090    00000001    00   1f      0002
+0x20001098    00000000    00   1f      0002
+0x2000109c    00000001    00   1f      0002
+0x200010a4    00000000    00   1f      0002
+0x200010a8    00000001    00   1f      0002
+0x200010d8    00000013    00   1f      0002
+0x200010dc    00000012    00   1f      0002
+0x200010e0    00000001    00   1f      0002
+0x200010e4    00000014    00   1f      0002
+0x200010e8    00000004    00   1f      0002
+0x200010ec    00000011    00   1f      0002
+0x200010f0    00000010    00   1f      0002
+0x200010f4    00000000    00   1f      0002
+0x200010f8    00000008    00   1f      0002
+0x200010fc    00000005    00   1f      0002
+0x20001100    00000007    00   1f      0002
+0x20001104    00000001    00   1f      0002
+0x20001108    00000001    00   1f      0002
+0x2000110c    00000002    00   1f      0002
+0x20001110    00000006    00   1f      0002
+0x20001114    00000000    00   1f      0002
+0x20001118    00000009    00   1f      0002
+0x2000111c    00000001    00   1f      0002
+0x20001120    00000002    00   1f      0002
+0x20001124    00000001    00   1f      0002
+0x20001128    00000001    00   1f      0002
+
+
+-bash-4.3# ldd wr_ex
+wr_ex needs:
+         /usr/lib/libc.a(shr.o)
+         /unix
+         /usr/lib/libcrypt.a(shr.o)
+
+

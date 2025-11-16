@@ -33,7 +33,7 @@ void mm_init(uc_engine *uc)
 	next_data_base = DATA_START + EXEC_DATA_SIZE;
 
 	/* Stack. */
-	if (uc_mem_map(g_uc, STACK_ADDR, STACK_SIZE*1024*1024, UC_PROT_ALL))
+	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
 		errx(1, "Unable to setup stack!\n");
 }
 

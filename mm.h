@@ -26,7 +26,7 @@
 #define DATA_END   (DATA_START + DATA_SIZE)
 
 #define STACK_ADDR 0x30000000
-#define STACK_SIZE 32768ULL    /* in kbytes. */
+#define STACK_SIZE (32ULL*1024*1024)  /* bytes. */
 
 /* Unix function descriptors. */
 #define UNIX_DESC_ADDR 0x0F000000  /* Descriptor heap */

@@ -30,8 +30,8 @@ static int vm_init_registers(struct loaded_coff *lcoff)
 {
 	int r;
 
-	/* Stack in r1. */
-	r = STACK_ADDR;
+	/* Stack in r1, reserve a page above. */
+	r = STACK_ADDR - 4096;
 	uc_reg_write(uc, UC_PPC_REG_1, &r);
 
 	/* TOC Anchor in r2. */

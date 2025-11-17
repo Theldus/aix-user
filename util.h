@@ -8,6 +8,7 @@
 #define UTIL_H
 
 #include <stdint.h>
+#include <unicorn/unicorn.h>
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -29,5 +30,7 @@ typedef uint64_t u64;
     do {field = be16toh(field);} while (0)
 #define CONV32(field) \
     do {field = be32toh(field);} while (0)
+
+extern void register_dump(uc_engine *uc);
 
 #endif /* UTIL_H */

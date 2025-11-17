@@ -13,7 +13,7 @@ LDLIBS += $(shell pkg-config --libs unicorn)
 .PHONY: all clean
 all: aix-user tools/ar tools/dump
 
-aix-user: vm.o xcoff.o gdb.o loader.o mm.o bigar.o syscalls.o
+aix-user: vm.o xcoff.o gdb.o loader.o mm.o bigar.o syscalls.o util.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 tools/ar: tools/ar.o bigar.o

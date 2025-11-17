@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,22 +21,6 @@
 static uc_engine *g_uc = NULL;
 static u32 next_text_base = TEXT_START + EXEC_TEXT_SIZE;
 static u32 next_data_base = DATA_START + EXEC_DATA_SIZE;
-
-/**
- * @brief Initialize memory manager with Unicorn instance.
- *
- * @param uc Unicorn engine instance.
- */
-void mm_init(uc_engine *uc)
-{
-	g_uc = uc;
-	next_text_base = TEXT_START + EXEC_TEXT_SIZE;
-	next_data_base = DATA_START + EXEC_DATA_SIZE;
-
-	/* Stack. */
-	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
-		errx(1, "Unable to setup stack!\n");
-}
 
 /**
  * @brief Safe addition with overflow checking.
@@ -337,4 +322,70 @@ int mm_write_u32(u32 vaddr, u32 value)
 		return -1;
 	}
 	return 0;
+}
+
+/* Handle invalid memory access: wheter protection and/or unmapped area. */
+static void
+hook_invalid_mem(uc_engine *uc, uc_mem_type type, uint64_t addr, int size,
+	int64_t value, void *user_data)
+{
+	((void)user_data);
+
+	switch (type) {
+	case UC_MEM_WRITE_UNMAPPED:
+		warn("\n\n>>> INVALID WRITE AT UNMAPPED ADDRESS <<<\n");
+		warn("ADDR: 0x%" PRIx64"  VALUE: 0x%" PRIx64"  SIZE: %d\n",
+		     addr, value, size);
+		break;
+	case UC_MEM_READ_UNMAPPED:
+		warn("\n\n>>> INVALID READ AT UNMAPPED ADDRESS <<<\n");
+		warn("ADDR: 0x%" PRIx64"  SIZE: %d\n",
+		     addr, size);
+		break;
+	case UC_MEM_READ_PROT:
+		warn("\n\n>>> INVALID READ AT ADDRESS (MAPPED) <<<\n");
+		warn("ADDR: 0x%" PRIx64"  SIZE: %d\n",
+		     addr, size);
+		break;
+	case UC_MEM_WRITE_PROT:
+		warn("\n\n>>> INVALID WRITE AT ADDRESS (MAPPED) <<<\n");
+		warn("ADDR: 0x%" PRIx64"  VALUE: 0x%" PRIx64"  SIZE: %d\n",
+		     addr, value, size);
+		break;
+	default:
+		break;
+	}
+
+	register_dump(uc);
+}
+
+/**
+ * @brief Initialize memory manager with Unicorn instance.
+ *
+ * @param uc Unicorn engine instance.
+ */
+void mm_init(uc_engine *uc)
+{
+	uc_hook inv_read;
+	uc_err err;
+
+	g_uc = uc;
+	next_text_base = TEXT_START + EXEC_TEXT_SIZE;
+	next_data_base = DATA_START + EXEC_DATA_SIZE;
+
+	/* Stack. */
+	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
+		errx(1, "Unable to setup stack!\n");
+
+	/* Troubleshooting hooks. */
+	err = uc_hook_add(g_uc, &inv_read,
+		UC_HOOK_MEM_READ_UNMAPPED|
+		UC_HOOK_MEM_WRITE_UNMAPPED|
+		UC_HOOK_MEM_READ_PROT|
+		UC_HOOK_MEM_WRITE_PROT,
+		hook_invalid_mem,
+		NULL, 0, (1ULL<<32)-1);
+
+	if (err)
+		errx(1, "Unable to insert UC_HOOK_MEM_READ_UNMAPPED hook!\n");
 }

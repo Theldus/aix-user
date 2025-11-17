@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 #include <inttypes.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -309,7 +310,7 @@ u32 mm_read_u32(u32 vaddr, int *err)
 		warn("Unable to read a u32 from %x!\n", vaddr);
 		*err = -1;
 	}
-	return v;
+	return htonl(v);
 }
 
 /**
@@ -317,6 +318,7 @@ u32 mm_read_u32(u32 vaddr, int *err)
  */
 int mm_write_u32(u32 vaddr, u32 value)
 {
+	value = htonl(value);
 	if (uc_mem_write(g_uc, vaddr, &value, sizeof value)) {
 		warn("Unable to write %x into %x!\n", value, vaddr);
 		return -1;

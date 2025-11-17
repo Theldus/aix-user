@@ -30,6 +30,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <arpa/inet.h>
 #include "syscalls.h"
 #include "mm.h"
 #include "util.h"
@@ -89,9 +90,9 @@ u32 create_unix_descriptor(const char *sym_name)
 		errx(1, "Too many /unix syscalls! Increase MAX_UNIX_SYSCALLS\n");
 
 	idx = next_syscall_idx++;
-	desc[0] = SYSCALL_ADDR;
-	desc[1] = idx;
-	desc[2] = idx;
+	desc[0] = htonl(SYSCALL_ADDR);
+	desc[1] = htonl(idx);
+	desc[2] = desc[1];
 
 	/* Write descriptor into memory. */
 	if (uc_mem_write(g_uc, next_desc_addr, desc, sizeof desc))

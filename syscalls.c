@@ -30,12 +30,15 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include "syscalls.h"
 #include "mm.h"
 #include "util.h"
 
 static uc_hook syscall_trace;
+typedef int (*syscall_fn)(void);
+
 
 #define SYSCALL_ADDR 0x3700
 #define MAX_SYSCALLS 1024
@@ -60,8 +63,54 @@ static int next_syscall_idx;
 
 static struct unix_syscalls {
 	const char *sym_name;  /* Symbol/syscall name.         */
-	u32 desc_addr;        /* Function descriptor address. */
+	int sys_table_idx;     /* Index on syscall table.      */
+	u32 desc_addr;         /* Function descriptor address. */
 } unix_syscalls[MAX_SYSCALLS];
+
+/* Syscall table. */
+int do_kwrite(void);
+int do__exit(void);
+
+static struct sys_table {
+	const char *name;
+	syscall_fn sys;
+} sys_table[] = {
+	{"kwrite", do_kwrite},
+	{"_exit",  do__exit},
+};
+
+/**
+ *
+ */
+static u32 read_gpr(u32 gpr) {
+	uc_err err;
+	u32 value;
+	if (gpr > 31)
+		errx(1, "read_gpr: invalid GPR, aborting...!\n");
+	gpr += UC_PPC_REG_0;
+	err  = uc_reg_read(g_uc, gpr, &value);
+	if (err)
+		errx(1, "Unable to read PPC GPR n=%d!\n",gpr);
+	return value;
+}
+
+/**
+ *
+ */
+static void write_gpr(u32 gpr, u32 val) {
+	uc_err err;
+	if (gpr > 31)
+		errx(1, "write_gpr: invalid GPR, aborting...!\n");
+	gpr += UC_PPC_REG_0;
+	err  = uc_reg_write(g_uc, gpr, &val);
+	if (err)
+		errx(1, "Unable to write PPC GPR n=%d, val=%d!\n", gpr, val);
+}
+
+/**
+ *
+ */
+static void write_ret_value(u32 val) {write_gpr(3, val);}
 
 /**
  *
@@ -98,21 +147,27 @@ u32 create_unix_descriptor(const char *sym_name)
 	if (uc_mem_write(g_uc, next_desc_addr, desc, sizeof desc))
 		errx(1, "Failed to write /unix descriptor for %s\n", sym_name);
 
-	unix_syscalls[idx].sym_name  = sym_name;
-	unix_syscalls[idx].desc_addr = next_desc_addr;
+	unix_syscalls[idx].sym_name      = sym_name;
+	unix_syscalls[idx].desc_addr     = next_desc_addr;
+	unix_syscalls[idx].sys_table_idx = -1;
 	next_desc_addr += 12;
 
 	SYS("Created /unix descriptor for '%s': desc=0x%x, index=%d\n", sym_name,
 		unix_syscalls[idx].desc_addr, idx);
 
+	/* Look at the sys_table and see if this symbol/syscall is implemented. */
+	for (i = 0; i < sizeof(sys_table)/sizeof(sys_table[0]); i++) {
+		if (strcmp(sym_name, sys_table[i].name))
+			continue;
+		unix_syscalls[idx].sys_table_idx = i;
+		SYS("Symbol/syscall (%s) found on sys_table!\n", sym_name);
+	}
+
 	return unix_syscalls[idx].desc_addr;
 }
 
 /**
- * @brief Write syscall handler (10).
- *
- * @param uc          Unicorn Engine pointer.
- * @param gpr_values  All GPRs values (0-31).
+ * @brief Write syscall handler.
  *
  * Arguments in:
  *  r3 = fd, r4 = buffer, r5 = count
@@ -121,32 +176,29 @@ u32 create_unix_descriptor(const char *sym_name)
  * @return Returns 0 if syscall could be handled (even if there
  * where errors), -1 if the syscall could not be called at all.
  */
-int do_sys_write(uc_engine *uc, int *gpr_vals)
+int do_kwrite(void)
 {
-	char *buff;
 	int ret;
+	char *h_buff;
+	u32 vm_fd    = read_gpr(3);
+	u32 vm_buff  = read_gpr(4);
+	u32 vm_count = read_gpr(5);
 
-	if (!gpr_vals[5]) {
-		gpr_vals[3] = 0;
-		warn("Invalid count size!\n");
+	/* Invalid size. */
+	if (!vm_count)
+		return 0;
+
+	if (!(h_buff = malloc(vm_count)))
+		errx(1, "VM OOM\n");
+
+	if (uc_mem_read(g_uc, vm_buff, h_buff, vm_count)) {
+		warn("Unable to read from VM memory: 0x%x\n", vm_buff);
 		return -1;
 	}
 
-	buff = malloc(gpr_vals[5]);
-	if (!buff) {
-		warn("VM OOM!\n");
-		return -1;
-	}
-
-	if (uc_mem_read(uc, gpr_vals[4], buff, gpr_vals[5])) {
-		warn("Unable to read from VM memory: %x\n", gpr_vals[4]);
-		free(buff);
-		return -1;
-	}
-
-	gpr_vals[3] = write(gpr_vals[3], buff, gpr_vals[5]);
-	free(buff);
-	return 0;
+	ret = write(vm_fd, h_buff, vm_count);
+	free(h_buff);
+	return ret;
 }
 
 /**
@@ -158,15 +210,9 @@ int do_sys_write(uc_engine *uc, int *gpr_vals)
  * Arguments in:
  *  r3 = exit code
  */
-int do_sys_exit(uc_engine *uc, int *gpr_vals)
-{
-	((void)uc);
-	_exit(gpr_vals[3]);
+int do__exit(void) {
+	_exit(read_gpr(3));
 }
-
-/* AIX 7.2 TL04 SP02 syscall numbers.  */
-#define SYS_write 10
-#define SYS_exit  149
 
 /**
  * @brief My attempt to make a generic syscall handler/dispatcher.
@@ -179,36 +225,28 @@ int do_sys_exit(uc_engine *uc, int *gpr_vals)
 static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
 	void *user_data)
 {
-	void *ptr_vals[32] = {0};
-	int vals[32]       = {0};
-	int regs[32];
+	struct unix_syscalls *sys;
+	u32 sys_nr = read_gpr(2);
 	int ret;
-	int i;
 
-	for (i = 0; i < 32; i++) {
-		regs[i] = i+2;
-		vals[i] = i+2;
-		ptr_vals[i] = &vals[i];
-	}
-	if (uc_reg_read_batch(uc, regs, ptr_vals, 32) < 0) {
-		warn("Unable to read GPRs...\n");
+	if (sys_nr >= next_syscall_idx) {
+		warn(">>>> INVALID SYSCALL TRIGGERED, sysnr: %d <<<<\n", sys_nr);
+		write_ret_value(-1);
 		return;
 	}
 
-	printf(">>> Syscall at 0x%" PRIx64", SYS_nr: %d\n", addr, vals[2]);
+	sys = &unix_syscalls[sys_nr];
+	SYS("Syscall at 0x%" PRIx64", SYS_nr: %d, func: (%s)\n",
+		addr, sys_nr, sys->sym_name);
 
-	switch (vals[2]) {
-		/* Args: r3 = fd, r4 = buffer, r5 = count. */
-		case SYS_write:
-			ret = do_sys_write(uc, vals);
-			break;
-		case SYS_exit:
-			ret = do_sys_exit(uc, vals);
-			break;
-		default:
-			warn("Unknown syscall number: %d!, ignoring...\n", vals[2]);
+	if (sys->sys_table_idx < 0) {
+		warn(">>> UNIMPLEMENTED SYSCALL !!! (%s) <<<\n", sys->sym_name);
+		write_ret_value(-1);
+		return;
 	}
 
+	ret = sys_table[sys->sys_table_idx].sys();
+	write_ret_value(ret);
 }
 
 /**

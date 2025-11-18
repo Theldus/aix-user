@@ -231,6 +231,8 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			continue;
 
 		sym[i].l_value += lc->deltas[ sym[i].l_secnum - 1 ];
+		LOADER("Fixing export, sym: %s, addr: 0x%08x\n", sym[i].u.l_strtblname,
+			sym[i].l_value);
 	}
 
 	/*
@@ -263,7 +265,13 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 				continue;
 
 			value = resolve_import(uc, sym, lc);
+			LOADER("Import sym (%s), resolved, addr=0x%08x\n",
+				sym->u.l_strtblname, value);
 		}
+
+		LOADER("Writing resolved symbol: v=0x%08x, addr=0x%08x\n",
+			value, addr);
+	
 		if (mm_write_u32(addr, value) < 0)
 			errx(1, "Unable to write address relocated into 0x%x\n", addr);	
 	}

@@ -304,6 +304,7 @@ xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 	struct xcoff_ldr_sym_tbl_hdr32 *st;
 	struct xcoff_ldr_hdr32 *ldr;
 	const char *symname;
+	size_t symlen;
 	const char *p;
 	u32 off;
 	int i;
@@ -329,11 +330,13 @@ xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 			CONV32(st->u.s.offset);
 			symname =  xcoff->buff + sec->s_scnptr + ldr->l_stoff;
 			symname += st->u.s.offset;
+			symlen  =  strlen(symname);
 		} else {
 			symname = st->u.l_name;
+			symlen  = strnlen(symname, 8); /* NULL-padded, not NULL-terminated. */
 		}
 
-		st->u.l_strtblname = strdup(symname);
+		st->u.l_strtblname = strndup(symname, symlen);
 		if (!st->u.l_strtblname)
 			errx(1, "Unable to dup symbol name!\n");
 		
@@ -507,7 +510,7 @@ void xcoff_print_ldr(const struct xcoff *xcoff)
 	printf("IDX  Value      SecNum SymType SymClass IMPid   Name\n");
 	for (i = 0; i < ldr->l_nsyms; i++) {
 		st = &xcoff->ldr.symtbl[i];
-		printf("%04d 0x%08x 0x%04x 0x%02x    0x%02x     0x%04x  %s\n",
+		printf("%04d 0x%08x 0x%04x 0x%02x    0x%02x     0x%04x  (%s)\n",
 			i,
 			st->l_value,
 			st->l_secnum,

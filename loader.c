@@ -244,9 +244,11 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 		/* Addr containing the addr to be relocated. */
 		addr = rt[i].l_vaddr + lc->deltas[ rt[i].l_rsecnm - 1 ];
 
-		/* Section relocations (symndx 0/1/2 = .text/.data/.bss).
+		/*
+		 * Section relocations (symndx 0/1/2 = .text/.data/.bss).
 		 * The value at this address points into that section and
-		 * needs adjustment if the section moved (delta != 0). */
+		 * needs adjustment if the section moved (delta != 0).
+		 */
 		if (rt[i].l_symndx < 3) {
 			/* Read the value & relocate it. */
 			value = mm_read_u32(addr, &ret);
@@ -256,17 +258,24 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			/* Add section-specific delta to adjust the pointer */
 			value += lc->deltas[rt[i].l_symndx];
 		}
-		/* Imports. */
+
+		/* Everything else (import/export) */
 		else {
 			symidx = rt[i].l_symndx - 3;
 			sym    = &lc->xcoff.ldr.symtbl[symidx];
 
-			if (!(sym->l_symtype & L_IMPORT))
-				continue;
+			if (sym->l_symtype & L_IMPORT) {
+				value = resolve_import(uc, sym, lc);
+				LOADER("Imported sym (%s), resolved, addr=0x%08x\n",
+				       sym->u.l_strtblname, value);
+			}
 
-			value = resolve_import(uc, sym, lc);
-			LOADER("Import sym (%s), resolved, addr=0x%08x\n",
-				sym->u.l_strtblname, value);
+			/* Local symbol - already relocated in symbol table. */
+			else if (sym->l_symtype & L_EXPORT) {
+				value = sym->l_value;
+				LOADER("Exported sym (%s), resolved, addr=0x%08x\n",
+				       sym->u.l_strtblname, value);
+			}
 		}
 
 		LOADER("Writing resolved symbol: v=0x%08x, addr=0x%08x\n",

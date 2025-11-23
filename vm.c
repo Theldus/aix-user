@@ -30,10 +30,6 @@ static int vm_init_registers(struct loaded_coff *lcoff)
 {
 	int r;
 
-	/* Stack in r1, reserve a page above. */
-	r = STACK_ADDR - 4096;
-	uc_reg_write(uc, UC_PPC_REG_1, &r);
-
 	/* TOC Anchor in r2. */
 	r = lcoff->xcoff.aux.o_toc;
 	uc_reg_write(uc, UC_PPC_REG_2, &r);
@@ -87,7 +83,7 @@ static void dump_registers(uc_engine *uc)
 
 
 /* Main =). */
-int main(int argc, char **argv)
+int main(int argc, const char **argv, const char **envp)
 {
 	u32 entry_point;
 	uc_hook trace;
@@ -99,10 +95,11 @@ int main(int argc, char **argv)
 		errx(1, "Unable to create VM: %s\n", uc_strerror(err));
 
 	mm_init(uc);
+	mm_init_stack(argc, argv, envp);
 	syscalls_init(uc);
 
 	/* Load executable. */
-	lcoff = load_xcoff_file(uc, "wr_ex", NULL, 1);
+	lcoff = load_xcoff_file(uc, "envs", NULL, 1);
 	if (!lcoff)
 		return -1;
 
@@ -113,7 +110,7 @@ int main(int argc, char **argv)
 		errx(1, "Unable to start GDB server!\n");
 
 	entry_point = xcoff_get_entrypoint(&lcoff->xcoff);
-	err = uc_emu_start(uc, entry_point, entry_point+1024, 0, 0);
+	err = uc_emu_start(uc, entry_point, (1ULL<<48), 0, 0);
 	if (err)
 		errx(1, "Unable to start VM, error: %s\n", uc_strerror(err));
 }

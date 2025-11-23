@@ -62,7 +62,8 @@ void mm_write_data(struct loaded_coff *lcoff, int is_exe);
 u32 mm_read_u32(u32 vaddr, int *err);
 int mm_write_u32(u32 vaddr, u32 value);
 
-
+/* Initialize stack with proper values for argc,argv and envp. */
+void mm_init_stack(int argc, const char **argv, const char **envp);
 
 
 #endif /* MM_H. */

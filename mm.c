@@ -362,6 +362,92 @@ hook_invalid_mem(uc_engine *uc, uc_mem_type type, uint64_t addr, int size,
 }
 
 /**
+ * @brief Copies a NUL-terminated string from host to guest/VM.
+ * @param dst
+ * @param src
+ * @return Returns a ptr to the end of the string.
+ *
+ * @note This is not the same signature as 'strcpy', as the returned
+ * address is one byte past the dst buffer address.
+ */
+static u32 mm_strcpy(u32 dst, const char *src)
+{
+	size_t len = strlen(src) + 1;
+	if (uc_mem_write(g_uc, dst, src, len))
+		errx(1, "Unable to copy string (%s) into VM: %x!\n", src, dst);
+	return dst+len;
+}
+
+/**
+ * @brief Initialize the stack with the proper expected layout for argc,
+ * argv and envp variables.
+ *
+ * @param argc Argument count
+ * @param argv Argument list, NULL-terminated
+ * @param envp Environment variables list, NULL-terminated
+ */
+void mm_init_stack(int argc, const char **argv, const char **envp)
+{
+	const char **p;
+	u32 stack_data;  /* Points to the strings itself. */
+	u32 stack_ptr;   /* Points to the strings ptrs.   */
+	int env_count;
+	size_t bytes;
+	u32 stack;
+	u32 val;
+	int i;
+
+	/* Stack. */
+	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
+		errx(1, "Unable to setup stack!\n");
+
+	bytes = 0;
+	for (p = argv; *p; bytes += strlen(*p)+1, p++);
+	for (p = envp; *p; bytes += strlen(*p)+1, p++, env_count++);
+	/* NULL-pointers for argv and envp, + argc and env_count. */
+	bytes += (2 + argc + env_count) * 4;
+
+	/*
+	 * Calculate starting stack address:
+	 * Leave some room at the very top, and then calculate a starting
+	 * address to put the first argv.
+	 */
+	stack_ptr   = STACK_ADDR - 256;
+	stack_ptr  -= bytes;
+	stack_ptr  &= ~(u32)0xF;  /* Align to 16-byte boundary. */
+	stack_data  = stack_ptr + ((argc + 1 + env_count + 1) * 4);
+	stack       = stack_ptr;
+
+	/* Copy argv. */
+	for (p = argv; *p; p++, stack_ptr += 4) {
+		mm_write_u32(stack_ptr, stack_data);
+		stack_data = mm_strcpy(stack_data, *p);
+	}
+	mm_write_u32(stack_ptr, 0);
+	stack_ptr += 4;
+
+	/* Copy envp. */
+	for (p = envp; *p; p++, stack_ptr += 4) {
+		mm_write_u32(stack_ptr, stack_data);
+		stack_data = mm_strcpy(stack_data, *p);
+	}
+	mm_write_u32(stack_ptr, 0);
+
+	/* Registers. */
+	uc_reg_write(g_uc, UC_PPC_REG_3, &argc);
+	uc_reg_write(g_uc, UC_PPC_REG_4, &stack);
+	val = stack + ((argc + 1) * 4);
+	uc_reg_write(g_uc, UC_PPC_REG_5, &val);
+
+	/*
+	 * Stack top should start with 16-NULL words (64-bytes) of distance
+	 * of the first argv on stack.
+	 */
+	stack -= 16*4;
+	uc_reg_write(g_uc, UC_PPC_REG_1, &stack);
+}
+
+/**
  * @brief Initialize memory manager with Unicorn instance.
  *
  * @param uc Unicorn engine instance.
@@ -374,10 +460,6 @@ void mm_init(uc_engine *uc)
 	g_uc = uc;
 	next_text_base = TEXT_START + EXEC_TEXT_SIZE;
 	next_data_base = DATA_START + EXEC_DATA_SIZE;
-
-	/* Stack. */
-	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
-		errx(1, "Unable to setup stack!\n");
 
 	/* Troubleshooting hooks. */
 	err = uc_hook_add(g_uc, &inv_read,

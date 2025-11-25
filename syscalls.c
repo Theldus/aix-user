@@ -90,6 +90,18 @@ struct unix_syscall_entry {
 };
 
 /**
+ * Unix symbols data map
+ * Each generic imported /unix data have an entry here.
+ */
+#define UNIX_MAX_DATA (UNIX_DATA_SIZE/4096)
+static struct unix_data_entry {
+	const char *sym_name;  /* /unix symbol name, e.g., _system_configuration. */
+	u32 addr;              /* symbol address.                                 */
+} unix_data[UNIX_MAX_DATA] = {0};
+static u32 next_data_addr;
+static u32 next_data_idx;
+
+/**
  * Syscall implementation table entry.
  * Maps syscall names to their implementation functions.
  */
@@ -112,6 +124,10 @@ static uc_hook syscall_trace;
 
 /* Array of all registered /unix syscalls. */
 static struct unix_syscall_entry unix_syscalls[MAX_SYSCALLS];
+
+/* errno and _environ. */
+u32 vm_errno;
+u32 vm_environ;
 
 /* ========================================================================== */
 /*           Syscall Handler Declarations + Implementation Table              */
@@ -144,14 +160,11 @@ static u32 read_gpr(u32 gpr)
 {
 	uc_err err;
 	u32 value;
-
 	if (gpr > 31)
 		errx(1, "read_gpr: invalid GPR %d (must be 0-31)\n", gpr);
-
 	err = uc_reg_read(g_uc, UC_PPC_REG_0 + gpr, &value);
 	if (err)
 		errx(1, "Failed to read GPR %d: %s\n", gpr, uc_strerror(err));
-
 	return value;
 }
 
@@ -164,10 +177,8 @@ static u32 read_gpr(u32 gpr)
 static void write_gpr(u32 gpr, u32 val)
 {
 	uc_err err;
-
 	if (gpr > 31)
 		errx(1, "write_gpr: invalid GPR %d (must be 0-31)\n", gpr);
-
 	err = uc_reg_write(g_uc, UC_PPC_REG_0 + gpr, &val);
 	if (err)
 		errx(1, "Failed to write GPR %d: %s\n", gpr, uc_strerror(err));
@@ -180,8 +191,7 @@ static void write_gpr(u32 gpr, u32 val)
  *
  * @param val Return value to write.
  */
-static void write_ret_value(u32 val)
-{
+static void write_ret_value(u32 val) {
 	write_gpr(3, val);
 }
 
@@ -207,7 +217,7 @@ static void write_ret_value(u32 val)
  * @param sym_name Symbol name (e.g., "kwrite", "_exit").
  * @return VM address of the function descriptor.
  */
-u32 create_unix_descriptor(const char *sym_name)
+static u32 create_unix_descriptor(const char *sym_name)
 {
 	int i;
 	int idx;
@@ -263,6 +273,70 @@ u32 create_unix_descriptor(const char *sym_name)
 	}
 
 	return unix_syscalls[idx].desc_addr;
+}
+
+/**
+ * @brief Nicely handle all unix imports.
+ *
+ * Not all /unix imports are functions, but might be data as well,
+ * so there is a need to first ensure which kind of symbol we're
+ * importing first.
+ *
+ * If it is some well-known symbol (such as environ, errno), handle them
+ * accordingly.
+ *
+ * @param cur_sym Symbol to import.
+ */
+u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym)
+{
+	u32 ret;
+	int i, idx;
+	const char *sym_name = cur_sym->u.l_strtblname;
+
+	/*
+	 * If normal function or 'syscall'*.
+	 * Not all syscall handlers are marked as syscalls, but just a normal
+	 * function descriptor.
+	 */
+	if (cur_sym->l_smclass & (XMC_DS|XMC_SV|XMC_SV3264))
+		return create_unix_descriptor(sym_name);
+
+	/* Normal data (Unclassified+RW), such as environ, errno... */
+	if (cur_sym->l_smclass & (XMC_UA|XMC_RW)) {
+		/* CHeck first for some known values. */
+		if (!strcmp(sym_name, "errno")   || !strcmp(sym_name, "_errno"))
+			return vm_errno;
+		if (!strcmp(sym_name, "environ") || !strcmp(sym_name, "_environ"))
+			return vm_environ;
+
+		/* Generic symbol, find an spot if not already allocated. */
+		for (i = 0; i < next_data_idx; i++) {
+			if (strcmp(sym_name, unix_data[i].sym_name) == 0) {
+				SYS("Reusing /unix data '%s': data=0x%x, index=%d\n",
+			    	sym_name, unix_data[i].addr, i);
+				return unix_data[i].addr;
+			}
+		}
+
+		/* Symbol doesn't exist yet, create a new mapping. */
+		if (next_data_idx >= UNIX_MAX_DATA)
+			errx(1, "Too many /unix data symbols! Increase UNIX_MAX_DATA!\n");
+
+		unix_data[next_data_idx].sym_name = sym_name;
+		unix_data[next_data_idx].addr     = next_data_addr;
+		ret             = next_data_addr;
+		next_data_addr += 4096;
+		next_data_idx  += 1;
+
+		SYS("Creating /unix data for '%s', data=0x%x\n", sym_name, ret);
+		return ret;
+	}
+
+	else {
+		SYS(">> WARNING <<: Class (%d) for symbol (%s) not supported yet!\n",
+			cur_sym->l_smclass, sym_name);
+		return 1; /* Return a generic value. */
+	}
 }
 
 /* ========================================================================== */
@@ -418,6 +492,8 @@ void syscalls_init(uc_engine *uc)
 	g_uc = uc;
 	next_syscall_idx = 0;
 	next_desc_addr   = UNIX_DESC_ADDR;
+	next_data_idx    = 0;
+	next_data_addr   = UNIX_DATA_ADDR;
 
 	/* Allocate memory region for /unix function descriptors. */
 	err = uc_mem_map(g_uc, UNIX_DESC_ADDR, UNIX_DESC_SIZE,
@@ -425,6 +501,12 @@ void syscalls_init(uc_engine *uc)
 	if (err)
 		errx(1, "Failed to map /unix descriptor region: %s\n",
 		     uc_strerror(err));
+
+	/* Allocate memory region for /unix data. */
+	err = uc_mem_map(g_uc, UNIX_DATA_ADDR, UNIX_DATA_SIZE,
+		             UC_PROT_READ | UC_PROT_WRITE);
+	if (err)
+		errx(1, "Failed to map /unix data: %s\n", uc_strerror(err));
 
 	/* Map the syscall entry point page. */
 	err = uc_mem_map(uc, 0x3000, 4096, UC_PROT_ALL);

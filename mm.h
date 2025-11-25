@@ -20,6 +20,9 @@
 #define TEXT_SIZE 0x10000000 /* 256 MiB. */
 #define DATA_SIZE 0x10000000 /* 256 MiB. */
 
+#define UNIX_DATA_ADDR 0x100000 /* Starts at 1MiB. */
+#define UNIX_DATA_SIZE 0x100000 /* 1MiB.           */
+
 #define TEXT_START 0x10000000
 #define TEXT_END   (TEXT_START + TEXT_SIZE)
 #define DATA_START 0x20000000

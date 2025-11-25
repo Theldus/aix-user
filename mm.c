@@ -17,6 +17,7 @@
 #include "mm.h"
 #include "util.h"
 #include "loader.h"
+#include "syscalls.h"
 
 /* Memory Management. */
 static uc_engine *g_uc = NULL;
@@ -412,7 +413,10 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	 * Leave some room at the very top, and then calculate a starting
 	 * address to put the first argv.
 	 */
-	stack_ptr   = STACK_ADDR - 256;
+	vm_errno   = STACK_ADDR - 4;
+	vm_environ = STACK_ADDR - 8;
+	stack_ptr  = STACK_ADDR - 12 - 256;
+
 	stack_ptr  -= bytes;
 	stack_ptr  &= ~(u32)0xF;  /* Align to 16-byte boundary. */
 	stack_data  = stack_ptr + ((argc + 1 + env_count + 1) * 4);
@@ -434,10 +438,16 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	mm_write_u32(stack_ptr, 0);
 
 	/* Registers. */
-	uc_reg_write(g_uc, UC_PPC_REG_3, &argc);
-	uc_reg_write(g_uc, UC_PPC_REG_4, &stack);
+	uc_reg_write(g_uc, UC_PPC_REG_3, &argc);  /* argc. */
+	uc_reg_write(g_uc, UC_PPC_REG_4, &stack); /* argv. */
 	val = stack + ((argc + 1) * 4);
+
+	/* envp: addr on r5 and on symbols environ/_environ. */
 	uc_reg_write(g_uc, UC_PPC_REG_5, &val);
+	mm_write_u32(vm_environ, val);
+
+	/* errno symbol */
+	mm_write_u32(vm_errno,   0);
 
 	/*
 	 * Stack top should start with 16-NULL words (64-bytes) of distance

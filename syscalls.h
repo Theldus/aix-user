@@ -7,10 +7,15 @@
 #ifndef SYSCALLS_H
 #define SYSCALLS_H
 
+#include "xcoff.h"
 #include "util.h"
 #include <unicorn/unicorn.h>
 
-extern u32 create_unix_descriptor(const char *sym_name);
+extern u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym);
 extern void syscalls_init(uc_engine *uc);
+
+/* errno and _environ. */
+extern u32 vm_errno;
+extern u32 vm_environ;
 
 #endif /* SYSCALLS_H. */

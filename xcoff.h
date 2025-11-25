@@ -24,6 +24,20 @@
 #define	L_ENTRY		0x20
 #define	L_IMPORT	0x40
 
+/* Symbol classes. */
+#define XMC_PR   0x0  /* Program Code.                                        */
+#define XMC_RO   0x1  /* Read Only Constant.                                  */
+#define XMC_TC   0x3  /* TOC (Table of Contents) item                         */
+#define XMC_UA   0x4  /* Unclassified, R/W,  such as _environ.                */
+#define XMC_RW   0x5  /* Read Write Data,    such errno                       */
+#define XMC_GL   0x6  /* Global Linkage                                       */
+#define XMC_XO   0x7  /* Extended operation, such __mulh.                     */
+#define XMC_SV   0x8  /* Supervisor call,    such trchk.                      */
+#define XMC_BS   0x9  /* BSS (uninitialized static)                           */
+#define XMC_DS   0xA  /* Descriptor csect (function descriptors), such calloc */
+#define XMC_TC0  0xF  /* TOC Anchor                                           */
+#define XMC_SV3264 0x12 /* Supervisor Call for 32 and 64-bit.                 */
+
 /**
  * 32-bit file header
  */

@@ -20,7 +20,10 @@
 #define GDB_STATE_CSUM_D2 0x8
 
 /* Single-step hook. */
-static uc_hook ss;
+static uc_hook uc_hook_ss;
+static int in_single_step = 1;
+static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
+	void *user_data);
 
 /* aix-user gdb stub. */
 static int sv_fd;
@@ -424,13 +427,33 @@ static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
 }
 
 /**
- * @brief Handles the single-step command from GDB.
+ * @brief Handles the single-step command from GDB, i.e., add (or not)
+ * a UC hook in order to stop in the next execution.
+ * @param uc   Unicorn engine.
  * @param cont Signals that the execution must proceed.
  */
-static inline void handle_gdb_single_step(int *cont) {
+static inline void handle_gdb_single_step(uc_engine *uc, int *cont) {
+	if (!in_single_step) {
+		uc_hook_add(uc, &uc_hook_ss, UC_HOOK_CODE, single_step, NULL, 0,
+		            (1ULL<<32)-1);
+		in_single_step = 1;
+	}
 	*cont = 1;
 }
 
+/**
+ * @brief Handles the continue GDB commad, i.e., delete (or not) a previous
+ * inserted single-step hook.
+ * @param uc   Unicorn engine.
+ * @param cont Signals that the execution must proceed.
+ */
+static inline void handle_gdb_continue(uc_engine *uc, int *cont) {
+	if (!in_single_step)
+		return;
+	*cont = 1;
+	uc_hook_del(uc, uc_hook_ss);
+	in_single_step = 0;
+}
 
 /**
  * @brief Handle GDB query packets (commands starting with 'q').
@@ -550,13 +573,19 @@ static int handle_gdb_cmd(uc_engine *uc, struct gdb_handle *gh, int *cont)
 		break;
 	/* Single-step. */
 	case 's':
-		handle_gdb_single_step(cont);
+		handle_gdb_single_step(uc, cont);
+		break;
+	/* Continue. */
+	case 'c':
+		handle_gdb_continue(uc, cont);
 		break;
 	/* Not-supported messages. */
 	default:
 		send_gdb_unsupported_msg();
 		break;
 	}
+
+	return 0;
 }
 
 /* ------------------------------------------------------------------*
@@ -737,8 +766,10 @@ int gdb_init(uc_engine *uc, u16 port)
 	 * Enable single-step, i.e.: add a hook code for the entire 4GiB.
 	 * so our handler stop at each instruction.
 	 */
-	if (uc_hook_add(uc, &ss, UC_HOOK_CODE, single_step, NULL, 0, (1ULL<<32)-1))
+	if (uc_hook_add(uc, &uc_hook_ss, UC_HOOK_CODE, single_step, NULL, 0,
+		            (1ULL<<32)-1)) {
 		return -1;
+	}
 
 	return 0;
 }

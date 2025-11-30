@@ -19,9 +19,23 @@
 #define GDB_STATE_CSUM_D1 0x4
 #define GDB_STATE_CSUM_D2 0x8
 
+/* Debug logging. */
+#define DEBUG_GDB
+
+#ifdef DEBUG_GDB
+#define GDB(...) \
+	do { \
+		fprintf(stderr, "[gdb] "); \
+		fprintf(stderr, __VA_ARGS__); \
+	} while (0)
+#else
+#define GDB(...)
+#endif
+
 /* Single-step hook. */
-static uc_hook uc_hook_ss;
+static u32 break_pc       = 0;
 static int in_single_step = 1;
+static uc_hook uc_hook_ss;
 static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 	void *user_data);
 
@@ -433,11 +447,7 @@ static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
  * @param cont Signals that the execution must proceed.
  */
 static inline void handle_gdb_single_step(uc_engine *uc, int *cont) {
-	if (!in_single_step) {
-		uc_hook_add(uc, &uc_hook_ss, UC_HOOK_CODE, single_step, NULL, 0,
-		            (1ULL<<32)-1);
-		in_single_step = 1;
-	}
+	in_single_step = 1;
 	*cont = 1;
 }
 
@@ -448,11 +458,120 @@ static inline void handle_gdb_single_step(uc_engine *uc, int *cont) {
  * @param cont Signals that the execution must proceed.
  */
 static inline void handle_gdb_continue(uc_engine *uc, int *cont) {
-	if (!in_single_step)
-		return;
-	*cont = 1;
-	uc_hook_del(uc, uc_hook_ss);
 	in_single_step = 0;
+	*cont = 1;
+}
+
+/**
+ * @brief Handles the 'add breakpoint (Zn)' command from GDB.
+ *
+ * This routine handles all kinds of breakpoints that GDB
+ * might ask for, from Z0 to Z4.
+ *
+ * @param Message buffer to be parsed.
+ * @param Buffer length.
+ *
+ * @return Returns 0 if the request is valid, -1 otherwise.
+ */
+static int handle_gdb_add_breakpoint(uc_engine *uc, const char *buff, size_t len)
+{
+	const char *ptr = buff;
+	u32 addr;
+
+	/* Skip 'Z0'. */
+	expect_char('Z', ptr, len);
+	expect_char_range('0', '4', ptr, len);
+	expect_char(',', ptr, len);
+
+	/* Get breakpoint address. */
+	addr = read_int(ptr, &len, &ptr, 16);
+	expect_char(',', ptr, len);
+
+	GDB("Adding breakpoint at 0x%08x\n", addr);
+
+	/*
+	 * Check which type of breakpoint we have and act
+	 * accordingly.
+	 */
+	switch (buff[1]) {
+	/*
+	 * Instruction break,
+	 * No distinction between SW (0) and HW breakpoint (1), since we're
+	 * using Unicorn anyway.
+	 */
+	case '0':
+	case '1':
+		break_pc = addr;
+		break;
+	/* Write watchpoint. */
+	case '2':
+		send_gdb_unsupported_msg();
+		break;
+	/* Read watchpoint. */
+	case '3':
+		send_gdb_unsupported_msg();
+		break;
+	/* Access (Read/Write) watchpoint. */
+	case '4':
+		send_gdb_unsupported_msg();
+		break;
+	}
+
+	send_gdb_ok();
+	return (0);
+}
+
+/**
+ * @brief Handles the 'remove breakpoint (zn)' command from GDB.
+ *
+ * @param Message buffer to be parsed.
+ * @param Buffer length.
+ *
+ * @return Returns 0 if the request is valid, -1 otherwise.
+ */
+static int
+handle_gdb_remove_breakpoint(uc_engine *uc, const char *buff, size_t len)
+{
+	const char *ptr = buff;
+	u32 addr;
+
+	((void)addr);
+
+	/* Skip 'z0'. */
+	expect_char('z', ptr, len);
+	expect_char_range('0', '4', ptr, len);
+	expect_char(',', ptr, len);
+
+	/* Get breakpoint address. */
+	addr = read_int(ptr, &len, &ptr, 16);
+	expect_char(',', ptr, len);
+
+	GDB("Removing breakpoint at 0x%08x\n", addr);
+
+	/*
+	 * Check which type of breakpoint we have and act
+	 * accordingly.
+	 *
+	 * Since we only support 1 instruction (ATM) and 1
+	 * data breakpoint, there is no need to check
+	 * address and etc...
+	 */
+	switch (buff[1]) {
+	/* Instruction break. */
+	case '0':
+	case '1':
+		break_pc = 0;
+		break;
+	/* Remaining. */
+	case '2':
+	case '3':
+	case '4':
+		/* Watchpoints Write, Read, Access(R/W): ignore for now. */
+		break;
+	}
+
+	send_gdb_ok();
+	return (0);
 }
 
 /**
@@ -578,6 +697,14 @@ static int handle_gdb_cmd(uc_engine *uc, struct gdb_handle *gh, int *cont)
 	/* Continue. */
 	case 'c':
 		handle_gdb_continue(uc, cont);
+		break;
+	/* Insert breakpoint. */
+	case 'Z':
+		handle_gdb_add_breakpoint(uc, gh->cmd_buff, sizeof gh->cmd_buff);
+		break;
+	/* Remove breakpoint. */
+	case 'z':
+		handle_gdb_remove_breakpoint(uc, gh->cmd_buff, sizeof gh->cmd_buff);
 		break;
 	/* Not-supported messages. */
 	default:
@@ -738,11 +865,18 @@ static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 	void *user_data)
 {
 	int cont = 0;
-	fprintf(stderr, "Inside-GDB single-step!!: %x\n", addr);
+	((void)user_data);
+
+	/* If not in single-step or if PC do not matches a previous
+	 * added breakpoint, just return. */
+	if (!in_single_step && addr != break_pc)
+		return;
+
+	GDB("Hook triggered at 0x%08x\n", addr);
 
 	if (cl_fd >= 0)
 		send_gdb_halt_reason();
-	
+
 	while (!cont) {
 		if (cl_fd < 0) {
 			cl_fd = accept(sv_fd, NULL, NULL);
@@ -766,10 +900,8 @@ int gdb_init(uc_engine *uc, u16 port)
 	 * Enable single-step, i.e.: add a hook code for the entire 4GiB.
 	 * so our handler stop at each instruction.
 	 */
-	if (uc_hook_add(uc, &uc_hook_ss, UC_HOOK_CODE, single_step, NULL, 0,
-		            (1ULL<<32)-1)) {
+	if (uc_hook_add(uc, &uc_hook_ss, UC_HOOK_CODE, single_step, NULL, 1, 0))
 		return -1;
-	}
 
 	return 0;
 }

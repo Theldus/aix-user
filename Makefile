@@ -7,13 +7,33 @@
 CC     ?= cc
 #CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable -fsanitize=address
 #LDLIBS += $(shell pkg-config --libs unicorn) -fsanitize=address
+CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes
 CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable
 LDLIBS += $(shell pkg-config --libs unicorn) 
+MILIS   = milicodes/strlen.h milicodes/memcmp.h
+
+OBJS  = vm.o xcoff.o gdb.o loader.o mm.o bigar.o
+OBJS += syscalls.o util.o milicodes/milicode.o 
 
 .PHONY: all clean
-all: aix-user tools/ar tools/dump
+all: $(MILIS) aix-user tools/ar tools/dump
 
-aix-user: vm.o xcoff.o gdb.o loader.o mm.o bigar.o syscalls.o util.o
+# Rules for milicode build
+# Binaries are generated via:
+# (AIX)   gcc strlen.c -c -O3 (copy object to Linux)
+# (Linux) powerpc64-linux-gnu-objcopy -O binary --only-section=.text \
+#             strlen.o strlen.bin
+# (Linux) (Optional): to see flat bin contents:
+#         powerpc64-linux-gnu-objdump \
+#            -b binary -m powerpc:common -EB -D strlen.bin
+# Obs:
+# (Linux) file strlen.o
+# strlen.o: executable (RISC System/6000 V3.1) or obj module not stripped
+#          
+milicodes/%.h: milicodes/%.bin
+	xxd -c 4 -i $< > $@
+
+aix-user: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 tools/ar: tools/ar.o bigar.o
@@ -23,7 +43,7 @@ tools/dump: tools/dump.o xcoff.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 clean:
-	rm -f *.o
+	rm -f $(OBJS)
 	rm -f tools/*.o
 	rm -f aix-user
 	rm -f tools/ar

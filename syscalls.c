@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "syscalls.h"
+#include "milicode.h"
 #include "mm.h"
 #include "util.h"
 
@@ -527,4 +528,7 @@ void syscalls_init(uc_engine *uc)
 	if (err)
 		errx(1, "Failed to install syscall hook: %s\n",
 		     uc_strerror(err));
+
+	/* Add milicode functions. */
+	milicode_init(uc);
 }

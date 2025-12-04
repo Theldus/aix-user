@@ -20,14 +20,21 @@
 #define TEXT_SIZE 0x10000000 /* 256 MiB. */
 #define DATA_SIZE 0x10000000 /* 256 MiB. */
 
+/* Miscellaneous export symbols (.data mapped). */
 #define UNIX_DATA_ADDR 0x100000 /* Starts at 1MiB. */
 #define UNIX_DATA_SIZE 0x100000 /* 1MiB.           */
 
+/* Milicode addresses. */
+#define UNIX_MILI_ADDR 0xD000
+#define UNIX_MILI_SIZE 0x3000 /* 3x 4KiB pages. */
+
+/* XCOFF executable addresses range. */
 #define TEXT_START 0x10000000
 #define TEXT_END   (TEXT_START + TEXT_SIZE)
 #define DATA_START 0x20000000
 #define DATA_END   (DATA_START + DATA_SIZE)
 
+/* Stack. */
 #define STACK_ADDR 0x30000000
 #define STACK_SIZE (32ULL*1024*1024)  /* bytes. */
 

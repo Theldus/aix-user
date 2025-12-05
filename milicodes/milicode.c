@@ -65,6 +65,7 @@ static struct milicodes {
 } milicodes[] = {
 	{.addr = 0xd000, MILI(memcmp)},
 	{.addr = 0xe600, MILI(strlen)},
+	{.addr = 0xf000, MILI(memmove)}
 };
 
 /**

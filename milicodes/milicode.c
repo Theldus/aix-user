@@ -9,6 +9,8 @@
 
 #include "memcmp.h"
 #include "strlen.h"
+#include "memmove.h"
+#include "strcmp.h"
 
 /**
  * Milicode:
@@ -64,6 +66,7 @@ static struct milicodes {
 	int size;
 } milicodes[] = {
 	{.addr = 0xd000, MILI(memcmp)},
+	{.addr = 0xdc00, MILI(strcmp)},
 	{.addr = 0xe600, MILI(strlen)},
 	{.addr = 0xf000, MILI(memmove)}
 };

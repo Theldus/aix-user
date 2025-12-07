@@ -11,6 +11,7 @@
 #include "strlen.h"
 #include "memmove.h"
 #include "strcmp.h"
+#include "strcpy.h"
 
 /**
  * Milicode:
@@ -68,7 +69,8 @@ static struct milicodes {
 	{.addr = 0xd000, MILI(memcmp)},
 	{.addr = 0xdc00, MILI(strcmp)},
 	{.addr = 0xe600, MILI(strlen)},
-	{.addr = 0xf000, MILI(memmove)}
+	{.addr = 0xf000, MILI(memmove)},
+	{.addr = 0xfc00, MILI(strcpy)},
 };
 
 /**

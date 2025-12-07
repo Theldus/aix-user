@@ -15,6 +15,7 @@
 #include "strstr.h"
 #include "memccpy.h"
 #include "memset.h"
+#include "bzero.h"
 
 /**
  * Milicode:
@@ -73,6 +74,7 @@ static struct milicodes {
 	{.addr = 0xd400, MILI(strstr)},
 	{.addr = 0xd800, MILI(memccpy)},
 	{.addr = 0xdc00, MILI(strcmp)},
+	{.addr = 0xe000, MILI(bzero)},
 	{.addr = 0xe008, MILI(memset)},
 	{.addr = 0xe600, MILI(strlen)},
 	{.addr = 0xf000, MILI(memmove)},

@@ -10,9 +10,9 @@ CC     ?= cc
 CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes
 CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable
 LDLIBS += $(shell pkg-config --libs unicorn) 
-MILIS   = milicodes/strlen.h milicodes/memcmp.h milicodes/memmove.h
-MILIS  += milicodes/strcmp.h milicodes/strcpy.h milicodes/strstr.h
-MILIS  += milicodes/memccpy.h
+MILIS   = milicodes/strlen.h  milicodes/memcmp.h milicodes/memmove.h
+MILIS  += milicodes/strcmp.h  milicodes/strcpy.h milicodes/strstr.h
+MILIS  += milicodes/memccpy.h milicodes/memset.h
 
 OBJS  = vm.o xcoff.o gdb.o loader.o mm.o bigar.o
 OBJS += syscalls.o util.o milicodes/milicode.o 

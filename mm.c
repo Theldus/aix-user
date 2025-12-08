@@ -17,7 +17,7 @@
 #include "mm.h"
 #include "util.h"
 #include "loader.h"
-#include "syscalls.h"
+#include "unix.h"
 
 /* Memory Management. */
 static uc_engine *g_uc = NULL;
@@ -447,7 +447,7 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	mm_write_u32(vm_environ, val);
 
 	/* errno symbol */
-	mm_write_u32(vm_errno,   0);
+	unix_set_errno(0);
 
 	/*
 	 * Stack top should start with 16-NULL words (64-bytes) of distance

@@ -5,27 +5,7 @@
  */
 
 /*
- * AIX syscalls handlers and /unix handling.
- *
- * A note about /unix:
- *  Despite seemingly being just another library, /unix is actually the AIX
- *  kernel image itself (just like vmlinux on Linux) and this is pretty
- *  interesting in many ways:
- *
- *  - /unix is listed by 'ldd' and even on the XCOFF structures as a library,
- *    one that libc depends on.
- *
- *  - /unix is only directly used by libc
- *
- *  - Despite containing the kernel, some of its symbols are exported to libc,
- *    which includes the syscalls handlers itself. These syscalls are still
- *    issued by a 'sc' (Supervisor Call) (as one would expect for a Power CPU)
- *    but the caller resides inside /unix, instead of being issued directly via
- *    libc.
- *
- *  Since syscalls should be implemented/pollyfilled by me, there is no reason
- *  on loading /unix as this does not even make sense, but all handling of /unix
- *  should still happen somewhere, and this is the file where this will happen.
+ * AIX syscalls
  */
 
 #include <string.h>
@@ -33,7 +13,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "syscalls.h"
-#include "milicode.h"
 #include "mm.h"
 #include "util.h"
 
@@ -71,13 +50,16 @@
 		fprintf(stderr, "[syscalls] " __VA_ARGS__); \
 	} while (0)
 
+/* Next available address for /unix function descriptors. */
+static u32 next_desc_addr;
+
 /**
  * Syscall implementation function pointer type.
  * All syscall handlers must match this signature.
  *
  * @return Return value to be placed in r3 (or -1 on error).
  */
-typedef int (*syscall_fn)(void);
+typedef int (*syscall_fn)(uc_engine *uc);
 
 /**
  * Unix syscall descriptor entry.
@@ -91,18 +73,6 @@ struct unix_syscall_entry {
 };
 
 /**
- * Unix symbols data map
- * Each generic imported /unix data have an entry here.
- */
-#define UNIX_MAX_DATA (UNIX_DATA_SIZE/4096)
-static struct unix_data_entry {
-	const char *sym_name;  /* /unix symbol name, e.g., _system_configuration. */
-	u32 addr;              /* symbol address.                                 */
-} unix_data[UNIX_MAX_DATA] = {0};
-static u32 next_data_addr;
-static u32 next_data_idx;
-
-/**
  * Syscall implementation table entry.
  * Maps syscall names to their implementation functions.
  */
@@ -114,9 +84,6 @@ struct sys_table_entry {
 /* Unicorn engine instance (initialized in syscalls_init). */
 static uc_engine *g_uc = NULL;
 
-/* Next available address for /unix function descriptors. */
-static u32 next_desc_addr;
-
 /* Number of registered syscalls. */
 static int next_syscall_idx;
 
@@ -126,30 +93,15 @@ static uc_hook syscall_trace;
 /* Array of all registered /unix syscalls. */
 static struct unix_syscall_entry unix_syscalls[MAX_SYSCALLS];
 
-/* errno and _environ. */
-u32 vm_errno;
-u32 vm_environ;
-
-/* ========================================================================== */
-/*           Syscall Handler Declarations + Implementation Table              */
-/* ========================================================================== */
-
-static int do_kwrite(void);
-static int do__exit(void);
-
 /**
  * Table mapping syscall names to their implementations.
  * When a /unix symbol is imported, we search this table to find
  * the corresponding implementation.
  */
 static struct sys_table_entry sys_table[] = {
-	{"kwrite", do_kwrite},
-	{"_exit",  do__exit},
+	{"kwrite", aix_kwrite},
+	{"_exit",  aix__exit},
 };
-
-/* ========================================================================== */
-/*                                   Helpers                                  */
-/* ========================================================================== */
 
 /**
  * @brief Read a PowerPC General Purpose Register.
@@ -157,7 +109,7 @@ static struct sys_table_entry sys_table[] = {
  * @param gpr Register number (0-31).
  * @return Value of the register.
  */
-static u32 read_gpr(u32 gpr)
+u32 read_gpr(u32 gpr)
 {
 	uc_err err;
 	u32 value;
@@ -175,7 +127,7 @@ static u32 read_gpr(u32 gpr)
  * @param gpr Register number (0-31).
  * @param val Value to write.
  */
-static void write_gpr(u32 gpr, u32 val)
+void write_gpr(u32 gpr, u32 val)
 {
 	uc_err err;
 	if (gpr > 31)
@@ -218,7 +170,7 @@ static void write_ret_value(u32 val) {
  * @param sym_name Symbol name (e.g., "kwrite", "_exit").
  * @return VM address of the function descriptor.
  */
-static u32 create_unix_descriptor(const char *sym_name)
+u32 syscall_register(const char *sym_name)
 {
 	int i;
 	int idx;
@@ -277,145 +229,6 @@ static u32 create_unix_descriptor(const char *sym_name)
 }
 
 /**
- * @brief Nicely handle all unix imports.
- *
- * Not all /unix imports are functions, but might be data as well,
- * so there is a need to first ensure which kind of symbol we're
- * importing first.
- *
- * If it is some well-known symbol (such as environ, errno), handle them
- * accordingly.
- *
- * @param cur_sym Symbol to import.
- */
-u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym)
-{
-	u32 ret;
-	int i, idx;
-	const char *sym_name = cur_sym->u.l_strtblname;
-
-	/*
-	 * If normal function or 'syscall'*.
-	 * Not all syscall handlers are marked as syscalls, but just a normal
-	 * function descriptor.
-	 */
-	if (cur_sym->l_smclass & (XMC_DS|XMC_SV|XMC_SV3264))
-		return create_unix_descriptor(sym_name);
-
-	/* Normal data (Unclassified+RW), such as environ, errno... */
-	if (cur_sym->l_smclass & (XMC_UA|XMC_RW)) {
-		/* CHeck first for some known values. */
-		if (!strcmp(sym_name, "errno")   || !strcmp(sym_name, "_errno"))
-			return vm_errno;
-		if (!strcmp(sym_name, "environ") || !strcmp(sym_name, "_environ"))
-			return vm_environ;
-
-		/* Generic symbol, find an spot if not already allocated. */
-		for (i = 0; i < next_data_idx; i++) {
-			if (strcmp(sym_name, unix_data[i].sym_name) == 0) {
-				SYS("Reusing /unix data '%s': data=0x%x, index=%d\n",
-			    	sym_name, unix_data[i].addr, i);
-				return unix_data[i].addr;
-			}
-		}
-
-		/* Symbol doesn't exist yet, create a new mapping. */
-		if (next_data_idx >= UNIX_MAX_DATA)
-			errx(1, "Too many /unix data symbols! Increase UNIX_MAX_DATA!\n");
-
-		unix_data[next_data_idx].sym_name = sym_name;
-		unix_data[next_data_idx].addr     = next_data_addr;
-		ret             = next_data_addr;
-		next_data_addr += 4096;
-		next_data_idx  += 1;
-
-		SYS("Creating /unix data for '%s', data=0x%x\n", sym_name, ret);
-		return ret;
-	}
-
-	else {
-		SYS(">> WARNING <<: Class (%d) for symbol (%s) not supported yet!\n",
-			cur_sym->l_smclass, sym_name);
-		return 1; /* Return a generic value. */
-	}
-}
-
-/* ========================================================================== */
-/*                         Syscall Implementations                            */
-/* ========================================================================== */
-
-/**
- * @brief kwrite syscall handler.
- *
- * Handles the AIX kwrite syscall, which writes data to a file descriptor.
- * This is essentially the same as POSIX write(2).
- *
- * AIX calling convention:
- *   r3 = fd    (file descriptor)
- *   r4 = buf   (VM address of buffer)
- *   r5 = count (number of bytes to write)
- *
- * Return value (in r3):
- *   Number of bytes written on success, -1 on error.
- *
- * @return Number of bytes written, or -1 on error.
- */
-static int do_kwrite(void)
-{
-	int ret;
-	char *h_buff;
-	u32 vm_fd    = read_gpr(3);
-	u32 vm_buff  = read_gpr(4);
-	u32 vm_count = read_gpr(5);
-
-	/* Handle zero-length writes. */
-	if (vm_count == 0)
-		return 0;
-
-	/* Allocate host buffer to copy VM memory. */
-	h_buff = malloc(vm_count);
-	if (!h_buff)
-		errx(1, "Host OOM: failed to allocate %u bytes\n", vm_count);
-
-	/* Copy data from VM memory to host buffer. */
-	if (uc_mem_read(g_uc, vm_buff, h_buff, vm_count)) {
-		warn("kwrite: failed to read from VM address 0x%x\n", vm_buff);
-		free(h_buff);
-		return -1;
-	}
-
-	/* Perform the actual write on the host. */
-	ret = write(vm_fd, h_buff, vm_count);
-	free(h_buff);
-
-	return ret;
-}
-
-/**
- * @brief _exit syscall handler.
- *
- * Handles the AIX _exit syscall, which terminates the process immediately
- * without cleanup. This is the same as POSIX _exit(2).
- *
- * AIX calling convention:
- *   r3 = status (exit code)
- *
- * This function does not return.
- *
- * @return Never returns (calls _exit).
- */
-static int do__exit(void)
-{
-	u32 exit_code = read_gpr(3);
-	_exit(exit_code);
-	/* NOTREACHED */
-}
-
-/* ========================================================================== */
-/*                           Syscall Dispatcher                               */
-/* ========================================================================== */
-
-/**
  * @brief Generic syscall handler/dispatcher.
  *
  * This function is called by Unicorn whenever execution reaches 0x3700
@@ -462,13 +275,9 @@ static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
 	}
 
 	/* Dispatch to the handler and write return value. */
-	ret = sys_table[sys->sys_table_idx].handler();
+	ret = sys_table[sys->sys_table_idx].handler(uc);
 	write_ret_value(ret);
 }
-
-/* ========================================================================== */
-/*                            Initialization                                  */
-/* ========================================================================== */
 
 /**
  * @brief Initialize the syscall subsystem.
@@ -493,21 +302,6 @@ void syscalls_init(uc_engine *uc)
 	g_uc = uc;
 	next_syscall_idx = 0;
 	next_desc_addr   = UNIX_DESC_ADDR;
-	next_data_idx    = 0;
-	next_data_addr   = UNIX_DATA_ADDR;
-
-	/* Allocate memory region for /unix function descriptors. */
-	err = uc_mem_map(g_uc, UNIX_DESC_ADDR, UNIX_DESC_SIZE,
-	                 UC_PROT_READ | UC_PROT_WRITE);
-	if (err)
-		errx(1, "Failed to map /unix descriptor region: %s\n",
-		     uc_strerror(err));
-
-	/* Allocate memory region for /unix data. */
-	err = uc_mem_map(g_uc, UNIX_DATA_ADDR, UNIX_DATA_SIZE,
-		             UC_PROT_READ | UC_PROT_WRITE);
-	if (err)
-		errx(1, "Failed to map /unix data: %s\n", uc_strerror(err));
 
 	/* Map the syscall entry point page. */
 	err = uc_mem_map(uc, 0x3000, 4096, UC_PROT_ALL);
@@ -528,7 +322,4 @@ void syscalls_init(uc_engine *uc)
 	if (err)
 		errx(1, "Failed to install syscall hook: %s\n",
 		     uc_strerror(err));
-
-	/* Add milicode functions. */
-	milicode_init(uc);
 }

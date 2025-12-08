@@ -16,7 +16,7 @@
 #include "loader.h"
 #include "mm.h"
 #include "util.h"
-#include "syscalls.h"
+#include "unix.h"
 
 static int g_depth = -1;
 
@@ -381,11 +381,12 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	LOADER("Allocated: .text=0x%x .data=0x%x .bss=0x%x\n",
 		lcoff->text_start, lcoff->data_start, lcoff->bss_start);
 
-	/* Relocate TOC anchor too. */
+	/* Relocate TOC anchor and set it if we're handling the main exec. */
 	lcoff->toc_anchor = aux->o_toc + lcoff->deltas[DATA_DELTA];
+	if (is_exe)
+		uc_reg_write(uc, UC_PPC_REG_2, &lcoff->toc_anchor);
 
 	push_coff(lcoff);
-
 	mm_write_text(lcoff, is_exe);
 	mm_write_data(lcoff, is_exe);
 

@@ -4,18 +4,19 @@
  * Made by Theldus, 2025
  */
 
-#ifndef SYSCALLS_H
-#define SYSCALLS_H
+#ifndef UNIX_H
+#define UNIX_H
 
 #include "xcoff.h"
 #include "util.h"
 #include <unicorn/unicorn.h>
 
-extern u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym);
-extern void syscalls_init(uc_engine *uc);
+u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym);
+void unix_set_errno(u32 errno);
+void unix_init(uc_engine *uc);
 
 /* errno and _environ. */
 extern u32 vm_errno;
 extern u32 vm_environ;
 
-#endif /* SYSCALLS_H. */
+#endif /* UNIX_H */

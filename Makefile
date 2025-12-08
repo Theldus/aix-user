@@ -7,15 +7,20 @@
 CC     ?= cc
 #CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable -fsanitize=address
 #LDLIBS += $(shell pkg-config --libs unicorn) -fsanitize=address
-CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes
+CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes -I$(CURDIR)/syscalls
 CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable
 LDLIBS += $(shell pkg-config --libs unicorn) 
 MILIS   = milicodes/strlen.h  milicodes/memcmp.h milicodes/memmove.h
 MILIS  += milicodes/strcmp.h  milicodes/strcpy.h milicodes/strstr.h
 MILIS  += milicodes/memccpy.h milicodes/memset.h milicodes/fill.h
 
-OBJS  = vm.o xcoff.o gdb.o loader.o mm.o bigar.o
-OBJS += syscalls.o util.o milicodes/milicode.o 
+OBJS  = vm.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
+OBJS += util.o milicodes/milicode.o 
+
+# Syscalls
+OBJS += syscalls/syscalls.o
+OBJS += syscalls/kwrite.o
+OBJS += syscalls/__exit.o
 
 .PHONY: all clean
 all: $(MILIS) aix-user tools/ar tools/dump

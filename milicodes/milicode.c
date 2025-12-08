@@ -16,6 +16,7 @@
 #include "memccpy.h"
 #include "memset.h"
 #include "bzero.h"
+#include "fill.h"
 
 /**
  * Milicode:
@@ -37,11 +38,16 @@
  * functions, and more: there *is* some non-documented functions that 
  * also behaves as mili-code functions and are also provided by the kernel,
  * they are:
- *   memcmp_overlay,   memcmp64_overlay,  strstr_overlay,  strstr64_overlay,
- *   memccpy_overlay,  memccpy64_overlay, strcmp_overlay,  strcmp64_overlay,
- *   bzero_overlay,    memset_overlay,    strlen_overlay,  bzero64_overlay,
- *   memset64_overlay, strlen64_overlay,  memmove_overlay, memmove64_overlay,
- *   fill_overlay,     fill64_overlay,    strcpy_overlay,  strcpy64_overlay
+ *
+ * 32 bit:
+ *   memcmp_overlay, strstr_overlay, memccpy_overlay, strcmp_overlay,
+ *   bzero_overlay,  memset_overlay, strlen_overlay,  memmove_overlay,
+ *   fill_overlay,   strcpy_overlay,  
+ *
+ * 64 bit (not implemented!):
+ *   memcmp64_overlay, strstr64_overlay, memccpy64_overlay, strcmp64_overlay,
+ *   bzero64_overlay,  memset64_overlay  strlen64_overlay,  fill64_overlay,
+ *   strcpy64_overlay, memmove64_overlay
  *
  * My functions might not be the fastest impl possible, as I'm more concerned
  * to correctness over speed atn, but as I make progress, I plan to replace
@@ -78,6 +84,7 @@ static struct milicodes {
 	{.addr = 0xe008, MILI(memset)},
 	{.addr = 0xe600, MILI(strlen)},
 	{.addr = 0xf000, MILI(memmove)},
+	{.addr = 0xf800, MILI(fill)},
 	{.addr = 0xfc00, MILI(strcpy)},
 };
 

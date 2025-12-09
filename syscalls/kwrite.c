@@ -28,9 +28,9 @@ int aix_kwrite(uc_engine *uc)
 {
 	int ret;
 	char *h_buff;
-	u32 vm_fd    = read_gpr(3);
-	u32 vm_buff  = read_gpr(4);
-	u32 vm_count = read_gpr(5);
+	u32 vm_fd    = read_1st_arg();
+	u32 vm_buff  = read_2nd_arg();
+	u32 vm_count = read_3rd_arg();
 
 	/* Handle zero-length writes. */
 	if (vm_count == 0)

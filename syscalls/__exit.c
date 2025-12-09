@@ -24,7 +24,7 @@ int aix__exit(uc_engine *uc)
 {
 	((void)uc);
 
-	u32 exit_code = read_gpr(3);
+	u32 exit_code = read_1st_arg();
 	_exit(exit_code);
 	/* NOTREACHED */
 }

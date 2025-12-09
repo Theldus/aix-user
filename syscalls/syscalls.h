@@ -18,6 +18,13 @@ extern u32 syscall_register(const char *sym_name);
 extern u32 read_gpr(u32 gpr);
 extern void write_gpr(u32 gpr, u32 val);
 
+/* Arguments. */
+u32 read_1st_arg(void);
+u32 read_2nd_arg(void);
+u32 read_3rd_arg(void);
+u32 read_4th_arg(void);
+u32 read_5th_arg(void);
+
 /* Syscalls signatures. */
 extern int aix_kwrite(uc_engine *uc);
 extern int aix__exit(uc_engine *uc);

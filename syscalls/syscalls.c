@@ -137,6 +137,13 @@ void write_gpr(u32 gpr, u32 val)
 		errx(1, "Failed to write GPR %d: %s\n", gpr, uc_strerror(err));
 }
 
+/* Read N syscalls arguments. */
+u32 read_1st_arg(void) { return read_gpr(3); }
+u32 read_2nd_arg(void) { return read_gpr(4); }
+u32 read_3rd_arg(void) { return read_gpr(5); }
+u32 read_4th_arg(void) { return read_gpr(6); }
+u32 read_5th_arg(void) { return read_gpr(7); }
+
 /**
  * @brief Write syscall return value.
  *

@@ -36,7 +36,7 @@ int main(int argc, const char **argv, const char **envp)
 	unix_init(uc);
 
 	/* Load executable. */
-	lcoff = load_xcoff_file(uc, "retstrlen", NULL, 1);
+	lcoff = load_xcoff_file(uc, "isatty", NULL, 1);
 	if (!lcoff)
 		return -1;
 

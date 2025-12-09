@@ -101,6 +101,7 @@ static struct unix_syscall_entry unix_syscalls[MAX_SYSCALLS];
 static struct sys_table_entry sys_table[] = {
 	{"kwrite", aix_kwrite},
 	{"_exit",  aix__exit},
+	{"kioctl", aix_kioctl},
 };
 
 /**

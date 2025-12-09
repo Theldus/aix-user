@@ -11,6 +11,13 @@
 #include "util.h"
 #include <unicorn/unicorn.h>
 
+#define TRACE(sys,...) \
+  do { \
+    fprintf(stderr, "TRACE %s(", sys); \
+    fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, ") = %d\n", ret); \
+  } while(0)
+
 extern void syscalls_init(uc_engine *uc);
 extern u32 syscall_register(const char *sym_name);
 
@@ -28,6 +35,7 @@ u32 read_5th_arg(void);
 /* Syscalls signatures. */
 extern int aix_kwrite(uc_engine *uc);
 extern int aix__exit(uc_engine *uc);
+extern int aix_kioctl(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

@@ -68,8 +68,8 @@ u32 vm_environ;
 /**
  *
  */
-void unix_set_errno(u32 errno) {
-	mm_write_u32(vm_errno, errno);
+void unix_set_errno(u32 err) {
+	mm_write_u32(vm_errno, err);
 }
 
 /**

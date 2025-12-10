@@ -99,9 +99,10 @@ static struct unix_syscall_entry unix_syscalls[MAX_SYSCALLS];
  * the corresponding implementation.
  */
 static struct sys_table_entry sys_table[] = {
-	{"kwrite", aix_kwrite},
-	{"_exit",  aix__exit},
-	{"kioctl", aix_kioctl},
+	{"kwrite",         aix_kwrite},
+	{"_exit",          aix__exit},
+	{"kioctl",         aix_kioctl},
+	{"read_sysconfig", aix_read_sysconfig},
 };
 
 /**
@@ -144,6 +145,9 @@ u32 read_2nd_arg(void) { return read_gpr(4); }
 u32 read_3rd_arg(void) { return read_gpr(5); }
 u32 read_4th_arg(void) { return read_gpr(6); }
 u32 read_5th_arg(void) { return read_gpr(7); }
+u32 read_6th_arg(void) { return read_gpr(8); }
+u32 read_7th_arg(void) { return read_gpr(9); }
+u32 read_8th_arg(void) { return read_gpr(10); }
 
 /**
  * @brief Write syscall return value.

@@ -31,11 +31,15 @@ u32 read_2nd_arg(void);
 u32 read_3rd_arg(void);
 u32 read_4th_arg(void);
 u32 read_5th_arg(void);
+u32 read_6th_arg(void);
+u32 read_7th_arg(void);
+u32 read_8th_arg(void);
 
 /* Syscalls signatures. */
 extern int aix_kwrite(uc_engine *uc);
 extern int aix__exit(uc_engine *uc);
 extern int aix_kioctl(uc_engine *uc);
+extern int aix_read_sysconfig(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

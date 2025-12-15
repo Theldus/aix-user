@@ -1,3 +1,4 @@
+set style address foreground cyan
 set confirm off
 set endian big
 target remote localhost:1234

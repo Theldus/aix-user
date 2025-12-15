@@ -327,7 +327,15 @@ int mm_write_u32(u32 vaddr, u32 value)
 	return 0;
 }
 
-/* Handle invalid memory access: wheter protection and/or unmapped area. */
+/**
+ * @brief Handle invalid memory access: wheter protection and/or unmapped area.
+ * @param uc    Unicorn context.
+ * @param type  Failure type.
+ * @param addr  Failed to access address.
+ * @param size  Memory length.
+ * @param value (For writes) value attempted to be written.
+ * @param user_data User defined data.
+ */
 static void
 hook_invalid_mem(uc_engine *uc, uc_mem_type type, uint64_t addr, int size,
 	int64_t value, void *user_data)
@@ -359,6 +367,22 @@ hook_invalid_mem(uc_engine *uc, uc_mem_type type, uint64_t addr, int size,
 		break;
 	}
 
+	register_dump(uc);
+}
+
+/**
+ * @brief Invalid instruction handler
+ * @param uc   Unicorn context.
+ * @param data User-defined data.
+ *
+ * @note Seems that this is not working at all, and I'm receiving
+ * an unhandled exception instead, see insn_emu.c
+ */
+static void hook_invalid_insn(uc_engine *uc, void *data) {
+	u32 pc;
+	uc_reg_read(uc, UC_PPC_REG_PC, &pc);
+	warn("\n\n>>> INVALID INSN <<<\n");
+	warn("ADDR: 0x%x\n", pc);
 	register_dump(uc);
 }
 
@@ -465,6 +489,7 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 void mm_init(uc_engine *uc)
 {
 	uc_hook inv_read;
+	uc_hook inv_insn;
 	uc_err err;
 
 	g_uc = uc;
@@ -479,7 +504,11 @@ void mm_init(uc_engine *uc)
 		UC_HOOK_MEM_WRITE_PROT,
 		hook_invalid_mem,
 		NULL, 0, (1ULL<<32)-1);
-
 	if (err)
-		errx(1, "Unable to insert UC_HOOK_MEM_READ_UNMAPPED hook!\n");
+		errx(1, "Unable to insert memory hooks hook!\n");
+
+	err = uc_hook_add(g_uc, &inv_insn,
+		UC_HOOK_INSN_INVALID, hook_invalid_insn, NULL, 1, 0);
+	if (err)
+		errx(1, "Unable to insert invalid insn hook!\n");
 }

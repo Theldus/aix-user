@@ -15,7 +15,7 @@ MILIS  += milicodes/strcmp.h  milicodes/strcpy.h milicodes/strstr.h
 MILIS  += milicodes/memccpy.h milicodes/memset.h milicodes/fill.h
 
 OBJS  = vm.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
-OBJS += util.o milicodes/milicode.o 
+OBJS += util.o milicodes/milicode.o insn_emu.o
 
 # Syscalls
 OBJS += syscalls/syscalls.o

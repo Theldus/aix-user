@@ -66,7 +66,11 @@ u32 vm_errno;
 u32 vm_environ;
 
 /**
+ * @brief Sets the VM's/guest errno.
+ * Since many syscalls set the errno to signal the reason for something
+ * that have failed, there is a need to update the VMs errno as well.
  *
+ * @param err Errno value to be set.
  */
 void unix_set_errno(u32 err) {
 	mm_write_u32(vm_errno, err);
@@ -137,6 +141,38 @@ u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym)
 }
 
 /**
+ * @brief Initialize the Unicorn's CPU with common/default register values.
+ * @param uc Unicorn context.
+ */
+static void registers_init(uc_engine *uc)
+{
+	static int regs_to_write[24];
+	static void *vals[24];
+	u32 reg1, reg2;
+	uc_err err;
+	int i;
+
+	reg1 = 0xDEADBEEF;
+	reg2 = 0x2000; /* Enable 'FP' on MSR. */
+	
+	/* Set other GPRs the default value: 0xDEADBEEF. */
+	regs_to_write[0] = UC_PPC_REG_0;
+	for (i = 6; i <= 25; i++)
+		regs_to_write[i-5] = UC_PPC_REG_0 + i;
+	regs_to_write[21] = UC_PPC_REG_LR;
+	regs_to_write[22] = UC_PPC_REG_CTR;
+	regs_to_write[23] = UC_PPC_REG_MSR;
+
+	reg1 = 0xDEADBEEF;
+	for (i = 0; i < 23; i++)
+		vals[i] = &reg1;
+	vals[23] = &reg2;
+
+	if ((err = uc_reg_write_batch(uc, regs_to_write, vals, 24)))
+		errx(1, "Unable to set default value regs: (%s)\n", uc_strerror(err));
+}
+
+/**
  * @brief Initialize the syscall subsystem.
  *
  * This function must be called once during VM initialization, before
@@ -173,9 +209,10 @@ void unix_init(uc_engine *uc)
 	if (err)
 		errx(1, "Failed to map /unix data: %s\n", uc_strerror(err));
 
+	/* Initial registers values. */
+	registers_init(uc);
 	/* Add milicode functions. */
 	milicode_init(uc);
-
 	/* Init syscalls. */
 	syscalls_init(uc);
 }

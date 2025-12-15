@@ -12,6 +12,7 @@
 #include "loader.h"
 #include "mm.h"
 #include "unix.h"
+#include "insn_emu.h"
 
 /* XCOFF file info. */
 static struct loaded_coff *lcoff;;
@@ -34,9 +35,10 @@ int main(int argc, const char **argv, const char **envp)
 	mm_init(uc);
 	mm_init_stack(argc, argv, envp);
 	unix_init(uc);
+	insn_emu_init(uc);
 
 	/* Load executable. */
-	lcoff = load_xcoff_file(uc, "isatty", NULL, 1);
+	lcoff = load_xcoff_file(uc, "printf", NULL, 1);
 	if (!lcoff)
 		return -1;
 
@@ -46,6 +48,13 @@ int main(int argc, const char **argv, const char **envp)
 
 	entry_point = xcoff_get_entrypoint(&lcoff->xcoff);
 	err = uc_emu_start(uc, entry_point, (1ULL<<48), 0, 0);
-	if (err)
-		errx(1, "Unable to start VM, error: %s\n", uc_strerror(err));
+	if (err) {
+		printf("FAILED with error: %s\n", uc_strerror(err));
+		if (err == UC_ERR_EXCEPTION) {
+			printf("  -> Exception occurred\n");
+			register_dump(uc);
+		}
+		return 1;
+	}
+	return 0;
 }

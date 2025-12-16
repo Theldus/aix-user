@@ -24,6 +24,7 @@ OBJS += syscalls/__exit.o
 OBJS += syscalls/kioctl.o
 OBJS += syscalls/read_sysconfig.o
 OBJS += syscalls/__loadx.o
+OBJS += syscalls/kfcntl.o
 
 .PHONY: all clean
 all: $(MILIS) aix-user tools/ar tools/dump

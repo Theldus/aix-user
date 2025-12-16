@@ -41,6 +41,7 @@ extern int aix__exit(uc_engine *uc);
 extern int aix_kioctl(uc_engine *uc);
 extern int aix_read_sysconfig(uc_engine *uc);
 extern int aix___loadx(uc_engine *uc);
+extern int aix_kfcntl(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

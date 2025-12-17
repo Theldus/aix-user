@@ -23,17 +23,14 @@ static int g_depth = -1;
 #define INCREASE_DEPTH g_depth++
 #define DECREASE_DEPTH g_depth--
 
-#define DEBUG
 
-#ifdef DEBUG
 #define LOADER(...) \
  do { \
-   fprintf(stderr, "[loader] %*s", g_depth, ""); \
-   fprintf(stderr, __VA_ARGS__); \
+   if (args.trace_loader) { \
+     fprintf(stderr, "[loader] %*s", g_depth, ""); \
+     fprintf(stderr, __VA_ARGS__); \
+   } \
  } while (0)
-#else
-#define LOADER(...)
-#endif
 
 /* Tiny AIX dynamic loader. */
 struct loaded_coff *loaded_modules;

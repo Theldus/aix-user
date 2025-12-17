@@ -43,7 +43,8 @@
  */
 #define UNIX(...) \
 	do { \
-		fprintf(stderr, "[unix] " __VA_ARGS__); \
+		if (args.trace_loader) \
+		  fprintf(stderr, "[unix] " __VA_ARGS__); \
 	} while (0)
 
 /**

@@ -55,17 +55,13 @@
  */
 
 /* Debug logging. */
-#define DEBUG
-
-#ifdef DEBUG
 #define MC(...) \
 	do { \
-		fprintf(stderr, "[milicode] "); \
-		fprintf(stderr, __VA_ARGS__); \
+		if (args.trace_loader) { \
+		  fprintf(stderr, "[milicode] "); \
+		  fprintf(stderr, __VA_ARGS__); \
+		} \
 	} while (0)
-#else
-#define MC(...)
-#endif
 
 /* Milicodes. */
 #define MILI(n) \

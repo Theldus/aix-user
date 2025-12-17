@@ -22,9 +22,14 @@
  */
 int aix__exit(uc_engine *uc)
 {
+	int ret;
+	u32 exit_code;
 	((void)uc);
 
-	u32 exit_code = read_1st_arg();
+	ret       = 0;
+	exit_code = read_1st_arg();
+
+	TRACE("_exit", "%d", exit_code);
 	_exit(exit_code);
 	/* NOTREACHED */
 }

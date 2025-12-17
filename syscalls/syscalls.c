@@ -47,7 +47,8 @@
  */
 #define SYS(...) \
 	do { \
-		fprintf(stderr, "[syscalls] " __VA_ARGS__); \
+		if (args.trace_loader) \
+		  fprintf(stderr, "[syscalls] " __VA_ARGS__); \
 	} while (0)
 
 /* Next available address for /unix function descriptors. */

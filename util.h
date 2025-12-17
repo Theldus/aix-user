@@ -10,6 +10,15 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+struct args {
+	const char *lib_path;     /* -L: library search path  */
+	int trace_syscall;        /* -s: enable syscall trace */
+	int trace_loader;         /* -l: enable loader/binder trace */
+	int gdb_port;             /* -g: GDB server port      */
+	int enable_gdb;           /* -d: enable GDB server    */
+};
+extern struct args args;
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

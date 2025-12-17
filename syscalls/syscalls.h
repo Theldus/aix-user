@@ -13,9 +13,11 @@
 
 #define TRACE(sys,...) \
   do { \
-    fprintf(stderr, "TRACE %s(", sys); \
-    fprintf(stderr, __VA_ARGS__); \
-    fprintf(stderr, ") = %d\n", ret); \
+  	if (args.trace_syscall) { \
+      fprintf(stderr, "TRACE %s(", sys); \
+      fprintf(stderr, __VA_ARGS__); \
+      fprintf(stderr, ") = %d\n", ret); \
+    } \
   } while(0)
 
 extern void syscalls_init(uc_engine *uc);

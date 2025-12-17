@@ -17,13 +17,7 @@
 #include "insn_emu.h"
 
 /* Command-line arguments. */
-struct args {
-	const char *lib_path;     /* -L: library search path  */
-	int trace_syscall;        /* -s: enable syscall trace */
-	int trace_loader;         /* -l: enable loader/binder trace */
-	int gdb_port;             /* -g: GDB server port      */
-	int enable_gdb;           /* -d: enable GDB server    */
-} args = {
+struct args args = {
 	.lib_path      = ".",
 	.trace_syscall = 0,
 	.trace_loader  = 0,
@@ -49,7 +43,7 @@ static void usage(const char *prgname)
 		"Options:\n"
 		"  -L <path> Set library search path (default: current directory)\n"
 		"  -s        Enable syscall trace\n"
-		"  -l        Enable loader/binder trace\n"
+		"  -l        Enable loader/binder/milicode/syscall trace\n"
 		"  -d        Enable GDB server\n"
 		"  -g <port> GDB server port (default: 1234)\n"
 		"  -h        Show this help\n\n"

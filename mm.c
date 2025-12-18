@@ -426,7 +426,8 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
 		errx(1, "Unable to setup stack!\n");
 
-	bytes = 0;
+	bytes     = 0;
+	env_count = 0;
 	for (p = argv; *p; bytes += strlen(*p)+1, p++);
 	for (p = envp; *p; bytes += strlen(*p)+1, p++, env_count++);
 	/* NULL-pointers for argv and envp, + argc and env_count. */

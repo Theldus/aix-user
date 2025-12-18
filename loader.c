@@ -245,7 +245,8 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	for (i = 0; i < ldr->l_nreloc; i++)
 	{
 		/* Addr containing the addr to be relocated. */
-		addr = rt[i].l_vaddr + lc->deltas[ rt[i].l_rsecnm - 1 ];
+		value = 0;
+		addr  = rt[i].l_vaddr + lc->deltas[ rt[i].l_rsecnm - 1 ];
 
 		/*
 		 * Section relocations (symndx 0/1/2 = .text/.data/.bss).

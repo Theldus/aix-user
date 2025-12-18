@@ -4,7 +4,17 @@
  * Made by Theldus, 2025
  */
 
-/* Based on PDCLib. */
+/**
+ * @brief Copy memory block, handling overlapping regions correctly.
+ *
+ * Standard C library function compiled as AIX milicode overlay.
+ * Based on PDCLib.
+ *
+ * @param s1 Destination memory block.
+ * @param s2 Source memory block.
+ * @param n Number of bytes to copy.
+ * @return Pointer to destination memory block.
+ */
 void *memmove(void *s1, const void *s2, size_t n)
 {
 	char *dest      = (char *)s1;

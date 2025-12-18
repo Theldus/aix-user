@@ -302,7 +302,14 @@ void mm_write_data(struct loaded_coff *lcoff, int is_exe)
 }
 
 /**
+ * @brief Read a 32-bit value from guest memory (big-endian).
  *
+ * Reads a 32-bit value from the specified virtual address in guest memory
+ * and converts it from big-endian (PowerPC) to host byte order.
+ *
+ * @param vaddr Virtual address to read from.
+ * @param err   Pointer to error flag (set to -1 on failure).
+ * @return The 32-bit value in host byte order, or 0 on error.
  */
 u32 mm_read_u32(u32 vaddr, int *err)
 {
@@ -315,7 +322,14 @@ u32 mm_read_u32(u32 vaddr, int *err)
 }
 
 /**
+ * @brief Write a 32-bit value to guest memory (big-endian).
  *
+ * Converts a 32-bit value from host byte order to big-endian (PowerPC)
+ * and writes it to the specified virtual address in guest memory.
+ *
+ * @param vaddr Virtual address to write to.
+ * @param value Value to write (in host byte order).
+ * @return 0 on success, -1 on error.
  */
 int mm_write_u32(u32 vaddr, u32 value)
 {

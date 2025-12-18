@@ -36,7 +36,12 @@ static int g_depth = -1;
 struct loaded_coff *loaded_modules;
 
 /**
+ * @brief Add a loaded XCOFF module to the global module list.
  *
+ * This function appends the given loaded XCOFF to the end of the
+ * loaded_modules linked list, making it available for symbol resolution.
+ *
+ * @param lc Loaded COFF structure to register.
  */
 static void push_coff(struct loaded_coff *lc)
 {
@@ -49,7 +54,16 @@ static void push_coff(struct loaded_coff *lc)
 }
 
 /**
+ * @brief Construct a unique identifier path for a binary or archive member.
  *
+ * For archive members, creates "binary_member" format.
+ * For standalone binaries, uses the binary path as-is.
+ *
+ * @param buff        Output buffer to store the path.
+ * @param size        Size of the output buffer.
+ * @param bin         Binary/archive file path.
+ * @param member_name Archive member name (NULL for standalone binaries).
+ * @return Pointer to the output buffer.
  */
 const char *
 get_bin_path(char *buff, size_t size, const char *bin, const char *member_name) {
@@ -61,7 +75,15 @@ get_bin_path(char *buff, size_t size, const char *bin, const char *member_name) 
 }
 
 /**
+ * @brief Search for a loaded module by import symbol reference.
  *
+ * This function looks up the import ID from the symbol, constructs
+ * the expected binary path, and searches the loaded_modules list
+ * for a matching module.
+ *
+ * @param imp_sym Import symbol containing the import file ID.
+ * @param lc      Current loaded XCOFF with import ID table.
+ * @return Pointer to the loaded module if found, NULL otherwise.
  */
 static const struct loaded_coff *
 find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
@@ -199,9 +221,18 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 }
 
 /**
+ * @brief Process all relocations for a loaded XCOFF module.
  *
+ * This function performs two main tasks:
+ * 1. Relocates export symbol addresses by applying section deltas
+ * 2. Processes all relocation entries (section relocations and imports)
  *
- * @note See 984 on ToC doc
+ * For section relocations (.text/.data/.bss), adjusts pointers by
+ * the appropriate delta. For imports, resolves symbols from other
+ * modules (potentially loading them if not already loaded).
+ *
+ * @param uc Unicorn engine instance.
+ * @param lc Loaded COFF structure with relocation information.
  */
 static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 {
@@ -293,9 +324,18 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 }
 
 /**
+ * @brief Load an XCOFF file or extract it from a Big-AR archive.
  *
+ * If member is NULL, loads the file directly as an XCOFF executable.
+ * If member is specified, opens the file as a Big-AR archive,
+ * extracts the named member, and loads it as an XCOFF library.
+ * Also assigns a unique name to the loaded module for tracking.
+ *
+ * @param bin    Path to the binary or archive file.
+ * @param member Archive member name (NULL for standalone XCOFF).
+ * @param lc     Loaded COFF structure to populate.
  */
-static void 
+static void
 load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 {
 	size_t size;
@@ -334,9 +374,22 @@ load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 }
 
 /**
+ * @brief Load and initialize an XCOFF executable or library.
  *
+ * This is the main entry point for loading XCOFF files. It:
+ * 1. Loads the XCOFF from file or archive
+ * 2. Allocates memory for .text/.data/.bss sections
+ * 3. Writes section contents to VM memory
+ * 4. Processes relocations and resolves imports
+ * 5. Registers the module in the global list
  *
  * TODO: Maybe split this into 'load_executable' and 'load_library'.
+ *
+ * @param uc     Unicorn engine instance.
+ * @param bin    Path to the binary or archive file.
+ * @param member Archive member name (NULL for executables).
+ * @param is_exe 1 for main executable, 0 for library.
+ * @return Pointer to the loaded COFF structure, or NULL on error.
  */
 struct loaded_coff *
 load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)

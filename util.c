@@ -28,7 +28,13 @@ static const int regs_to_be_read[] = {
 #define PPC_REGS_AMNT (sizeof(regs_to_be_read)/sizeof(int))
 
 /**
+ * @brief Dump all PowerPC general-purpose and special registers.
  *
+ * Reads and displays all 32 general-purpose registers (r0-r31) plus
+ * special registers (PC, MSR, CR, LR, CTR, XER) in a formatted table.
+ * Used for debugging and error reporting.
+ *
+ * @param uc Unicorn engine instance.
  */
 void register_dump(uc_engine *uc)
 {

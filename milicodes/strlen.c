@@ -6,6 +6,14 @@
 
 #include <stdio.h>
 
+/**
+ * @brief Calculate the length of a string.
+ *
+ * Standard C library function compiled as AIX milicode overlay.
+ *
+ * @param s Pointer to null-terminated string.
+ * @return Length of the string (excluding null terminator).
+ */
 size_t strlen(const char *s) {
 	const char *a = s;
 	while (*s)

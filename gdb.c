@@ -859,7 +859,16 @@ void handle_gdb_msg(uc_engine *uc, uint32_t addr, uint32_t size, int *cont)
 }
 
 /**
+ * @brief Unicorn hook callback for single-step debugging and breakpoints.
  *
+ * Pauses execution at each instruction when in single-step mode or when a
+ * breakpoint is hit. Handles GDB client connection and message processing
+ * during the pause.
+ *
+ * @param uc        Unicorn context.
+ * @param addr      Current instruction address.
+ * @param size      Instruction size.
+ * @param user_data User-defined data (unused).
  */
 static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 	void *user_data)
@@ -890,7 +899,15 @@ static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 }
 
 /**
+ * @brief Initialize the GDB stub server.
  *
+ * Sets up a TCP server on the specified port and installs a Unicorn code hook
+ * for single-stepping and breakpoint support. This must be called once during
+ * VM initialization before executing any code.
+ *
+ * @param uc   Unicorn engine instance.
+ * @param port TCP port number for the GDB server.
+ * @return 0 on success, -1 on error.
  */
 int gdb_init(uc_engine *uc, u16 port)
 {

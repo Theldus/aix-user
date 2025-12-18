@@ -256,7 +256,14 @@ static int xcoff_read_all_sechdrs(struct xcoff *xcoff)
 }
 
 /**
+ * @brief Read the relocation table from the loader section.
  *
+ * Parses relocation entries from the XCOFF file, allocates memory for them,
+ * and converts multi-byte fields from big-endian to host byte order.
+ *
+ * @param sec   Pointer to the loader section header.
+ * @param xcoff XCOFF32 data pointer.
+ * @return 0 on success, -1 on error.
  */
 static int
 xcoff_read_reltbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
@@ -296,7 +303,15 @@ xcoff_read_reltbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 }
 
 /**
+ * @brief Read the symbol table from the loader section.
  *
+ * Parses symbol entries, handles both inline names (8 bytes) and string table
+ * references, allocates memory for symbol name strings, and converts multi-byte
+ * fields from big-endian to host byte order.
+ *
+ * @param sec   Pointer to the loader section header.
+ * @param xcoff XCOFF32 data pointer.
+ * @return 0 on success, -1 on error.
  */
 static int
 xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
@@ -350,7 +365,15 @@ xcoff_read_symtbl(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 }
 
 /**
+ * @brief Read the import IDs table from the loader section.
  *
+ * Parses null-delimited strings representing import paths, bases, and members
+ * for dynamic linking dependencies. Each import ID contains 3 strings:
+ * path, base, and member.
+ *
+ * @param sec   Pointer to the loader section header.
+ * @param xcoff XCOFF32 data pointer.
+ * @return 0 on success, -1 on error.
  */
 static int
 xcoff_read_impids(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
@@ -392,7 +415,14 @@ xcoff_read_impids(const struct xcoff_sec_hdr32 *sec, struct xcoff *xcoff)
 }
 
 /**
+ * @brief Search for a section header by its flags.
  *
+ * Returns the first section matching the specified flags value.
+ *
+ * @param xcoff XCOFF32 data pointer.
+ * @param sec   Output pointer to store the found section header.
+ * @param flags Section flags to match (e.g., STYP_LOADER).
+ * @return 0 if found, -1 if not found.
  */
 static int
 get_section(const struct xcoff *xcoff, const struct xcoff_sec_hdr32 **sec,
@@ -418,7 +448,9 @@ get_section(const struct xcoff *xcoff, const struct xcoff_sec_hdr32 **sec,
 }
 
 /**
- *
+ * @brief Read the loader header from the given XCOFF.
+ * @param xcoff XCOFF structure where the header should be read.
+ * @param 0 if success, -1 otherwise.
  */
 int xcoff_read_ldrhdr(struct xcoff *xcoff)
 {
@@ -560,7 +592,13 @@ u32 xcoff_get_entrypoint(const struct xcoff *xcoff)
 }
 
 /**
+ * @brief Read all XCOFF headers in sequence.
  *
+ * Orchestrates reading of auxiliary header, section headers, and loader header.
+ * This is a convenience function that calls the individual header readers.
+ *
+ * @param xcoff XCOFF32 data pointer.
+ * @return 0 on success, -1 on error.
  */
 static int xcoff_read_hdrs(struct xcoff *xcoff)
 {
@@ -575,7 +613,16 @@ static int xcoff_read_hdrs(struct xcoff *xcoff)
 }
 
 /**
+ * @brief Load an XCOFF file from an already-mapped buffer.
  *
+ * Performs initial validation, reads file header, and parses all remaining
+ * headers. Used for loading XCOFF files from memory or archive members.
+ *
+ * @param fd    File descriptor (for reference, not used directly).
+ * @param buff  Buffer containing the XCOFF file data.
+ * @param size  Size of the buffer in bytes.
+ * @param xcoff XCOFF32 structure to populate.
+ * @return 0 on success, -1 on error.
  */
 int xcoff_load(int fd, const char *buff, size_t size, struct xcoff *xcoff)
 {
@@ -638,6 +685,7 @@ int xcoff_open(const char *bin, struct xcoff *xcoff)
 
 /**
  * @brief Deallocate all data saved in @p xcoff
+ * @param xcoff XCOFF structure pointer that will be closed/deallocated.
  */
 void xcoff_close(const struct xcoff *xcoff)
 {

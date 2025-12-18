@@ -8,18 +8,19 @@
 #include <stddef.h>
 
 /**
- * In the kernel,/unix there is the definition of a function similar to this one
- * called 'fill_overlay'. Reading its assembly, this function appears to be an
- * optimized version of memset that writes one word (4 bytes) at a time,
- * instead of a single byte.
+ * @brief Fill memory block with a 32-bit value, word at a time.
  *
- * I wasn’t able to find calls to this function in the libc, but for
- * completeness, here is an approximate implementation of what it does.
+ * AIX-specific milicode function. This is an optimized version of memset
+ * that writes one word (4 bytes) at a time instead of a single byte.
+ * Found in /unix as 'fill_overlay'.
  *
- * Note: yes, the parameters are reversed: 'value' is the 3rd parameter,
- * not the second!
+ * Note: Parameter order differs from memset - value is the third parameter!
+ *
+ * @param dst    Destination memory block.
+ * @param nbytes Number of bytes to fill.
+ * @param value  32-bit value to fill with.
+ * @return Pointer to destination memory block.
  */
-
 void *fill(void *dst, size_t nbytes, uint32_t value)
 {
 	uint8_t *p = dst;

@@ -6,6 +6,15 @@
 
 #include <stddef.h>
 
+/**
+ * @brief Locate a substring within a string.
+ *
+ * Standard C library function compiled as AIX milicode overlay.
+ *
+ * @param s1 String to search in.
+ * @param s2 Substring to search for.
+ * @return Pointer to first occurrence of s2 in s1, or NULL if not found.
+ */
 char *strstr(const char *s1, const char *s2)
 {
 	const char *p1 = s1;

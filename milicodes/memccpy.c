@@ -6,6 +6,18 @@
 
 #include <stddef.h>
 
+/**
+ * @brief Copy memory until a specific byte is found.
+ *
+ * Standard C library function compiled as AIX milicode overlay.
+ * Copies bytes from s2 to s1, stopping after the first occurrence of c.
+ *
+ * @param s1 Destination memory block.
+ * @param s2 Source memory block.
+ * @param c  Byte value to stop at (converted to unsigned char).
+ * @param n  Maximum number of bytes to copy.
+ * @return Pointer to byte after c in destination, or NULL if c not found.
+ */
 void *memccpy(void *restrict s1, const void *restrict s2, int c, size_t n)
 {
 	unsigned char      *dest = (unsigned char *)s1;

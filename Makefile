@@ -27,7 +27,7 @@ OBJS += syscalls/__loadx.o
 OBJS += syscalls/kfcntl.o
 
 .PHONY: all clean
-all: $(MILIS) aix-user tools/ar tools/dump
+all: $(MILIS) aix-user tools/ar tools/dump tools/ldd
 
 # Rules for milicode build
 # Binaries are generated via:
@@ -53,9 +53,13 @@ tools/ar: tools/ar.o bigar.o
 tools/dump: tools/dump.o xcoff.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
+tools/ldd: tools/ldd.o xcoff.o bigar.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
 clean:
 	rm -f $(OBJS)
 	rm -f tools/*.o
 	rm -f aix-user
 	rm -f tools/ar
 	rm -f tools/dump
+	rm -f tools/ldd

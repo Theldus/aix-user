@@ -67,11 +67,43 @@ static void push_coff(struct loaded_coff *lc)
  */
 const char *
 get_bin_path(char *buff, size_t size, const char *bin, const char *member_name) {
+	int ret;
 	if (member_name)
-		snprintf(buff, size - 1, "%s_%s", bin, member_name);
+		ret = snprintf(buff, size, "%s_%s", bin, member_name);
 	else
-		snprintf(buff, size - 1, "%s", bin);
+		ret = snprintf(buff, size, "%s", bin);
+
+	if (ret < 0 || (size_t)ret >= size)
+		errx(1, "Path too long: %s%s%s\n", bin,
+		     member_name ? "_" : "", member_name ? member_name : "");
 	return buff;
+}
+
+/**
+ * @brief Prepend library search path to a basename.
+ *
+ * Constructs a full path by prepending args.lib_path to the given
+ * basename. The result is: "lib_path/basename".
+ *
+ * @param dest      Output buffer for the full path.
+ * @param dest_size Size of output buffer.
+ * @param basename  Base filename to append.
+ */
+static void
+prepend_lib_path(char *dest, size_t dest_size, const char *basename)
+{
+	size_t len_base, len_path;
+
+	len_base = strlen(basename);
+	len_path = strlen(args.lib_path);
+
+	if (len_base + len_path + 1 >= dest_size - 1)
+		errx(1, "Path too long when prepending lib_path to %s\n", basename);
+
+	memcpy(dest, args.lib_path, len_path);
+	dest[len_path] = '/';
+	memcpy(dest + len_path + 1, basename, len_base);
+	dest[len_path + 1 + len_base] = '\0';
 }
 
 /**
@@ -91,7 +123,9 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 {
 	union xcoff_impid *impids;
 	struct loaded_coff *head;
-	char path[2048] = {0};
+	char search_name[2048] = {0};
+	char full_path[2048]   = {0};
+	const char *basename, *member;
 
 	if (!imp_sym || !lc)
 		return NULL;
@@ -100,22 +134,23 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 		errx(1, "Import ID for symbol (%s) should be greater than 0!\n",
 			imp_sym->u.l_strtblname);
 
-	head   = loaded_modules;
 	impids = lc->xcoff.ldr.impids;
-	get_bin_path(path, sizeof path,
-	             impids[imp_sym->l_ifile].l_impidbase,
-	             impids[imp_sym->l_ifile].l_impidmem);
-	
-	/*
-	 * If the current iterated XCOFF matches the name we're searching,
-	 * we found the lib.
-	 */
-	while (head) {
-		if (!strcmp(path, head->name))
+	basename = impids[imp_sym->l_ifile].l_impidbase;
+	member   = impids[imp_sym->l_ifile].l_impidmem;
+
+	/* Construct full path: lib_path + "/" + basename. */
+	prepend_lib_path(full_path, sizeof full_path, basename);
+
+	/* Construct module name: full_path + "_" + member (or just full_path). */
+	get_bin_path(search_name, sizeof search_name, full_path, member);
+
+	/* Search for matching module in loaded list. */
+	for (head = loaded_modules; head != NULL; head = head->next) {
+		if (!strcmp(search_name, head->name))
 			return head;
-		head = head->next;
 	}
-	return head;
+
+	return NULL;
 }
 
 /**
@@ -397,17 +432,26 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	struct loaded_coff *lcoff = NULL;
 	struct xcoff_aux_hdr32 *aux;
 	struct xcoff_sec_hdr32 *sec;
+	char full_path[2048] = {0};
+	const char *path;
 
 	if (!uc || !bin)
 		return lcoff;
 
+	path = bin;
 	INCREASE_DEPTH;
 
 	lcoff = calloc(1, sizeof(*lcoff));
 	if (!lcoff)
 		errx(1, "Unable to allocate buffer to load new XCOFF!\n");
 
-	load_xcoff_or_bigar(bin, member, lcoff);	
+	/* For libraries, prepend the library search path. */
+	if (!is_exe) {
+		prepend_lib_path(full_path, sizeof full_path, bin);
+		path = full_path;
+	}
+
+	load_xcoff_or_bigar(path, member, lcoff);	
 	aux = &lcoff->xcoff.aux;
 	sec = &lcoff->xcoff.secs[aux->o_snbss - 1];
 	

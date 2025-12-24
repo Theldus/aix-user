@@ -26,8 +26,19 @@ OBJS += syscalls/read_sysconfig.o
 OBJS += syscalls/__loadx.o
 OBJS += syscalls/kfcntl.o
 
+# Pretty print
+Q := @
+ifeq ($(V), 1)
+	Q :=
+endif
+
 .PHONY: all clean
 all: $(MILIS) aix-user tools/ar tools/dump tools/ldd
+
+# Objects
+%.o: %.c
+	@echo "  CC      $@"
+	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
 
 # Rules for milicode build
 # Binaries are generated via:
@@ -42,19 +53,24 @@ all: $(MILIS) aix-user tools/ar tools/dump tools/ldd
 # strlen.o: executable (RISC System/6000 V3.1) or obj module not stripped
 #          
 milicodes/%.h: milicodes/%.bin
-	xxd -c 4 -i $< > $@
+	@echo "  MILICODE      $@"
+	$(Q)xxd -c 4 -i $< > $@
 
 aix-user: $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	@echo "  LINK    $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 tools/ar: tools/ar.o bigar.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@echo "  LINK    $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 tools/dump: tools/dump.o xcoff.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@echo "  LINK    $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 tools/ldd: tools/ldd.o xcoff.o bigar.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@echo "  LINK    $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 clean:
 	rm -f $(OBJS)

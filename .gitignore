@@ -2,6 +2,9 @@
 *.a
 *.so
 *~
+out
+.libs
+.bins
 .gdb_history
 aix-user
 tools/ar

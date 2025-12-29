@@ -1,0 +1,49 @@
+#
+# aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
+# on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
+# Made by Theldus, 2025
+#
+
+name: CI
+
+env:
+  UNICORN: https://github.com/unicorn-engine/unicorn/releases/download/2.1.4/ubuntu-cmake-shared-x64.7z 
+  AIX_LIB: https://archive.org/download/coreutils_7.2_tl04_sp2.tar/coreutils_7.2_tl04_sp2.tar.gz 
+  PKG_CONFIG_PATH: /home/runner/work/aix-user/aix-user/.deps/lib/pkgconfig/
+  LD_LIBRARY_PATH: /home/runner/work/aix-user/aix-user/.deps/lib/
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+    name: Build and test aix-user
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup AIX libs
+      run: |
+        pwd
+        echo "pkgconfig: $PKG_CONFIG_PATH"
+        echo "ldconfig: $LD_LIBRARY_PATH"
+        mkdir .deps
+        mkdir .libs
+        wget $AIX_LIB -O .deps/aix-libs.tar.gz 
+        tar xvf .deps/aix-libs.tar.gz -C .deps/
+        cp .deps/coreutils_7.2_tl04_sp2/libs/* .libs
+
+    - name: Setup Unicorn
+      run: |
+        sudo apt-get install p7zip-full -y
+        wget $UNICORN -O .deps/unicorn.7z
+        7z x .deps/unicorn.7z -o.deps/
+        sed -i "s|instdir|$PWD/.deps|g" .deps/lib/pkgconfig/unicorn.pc
+
+    - name: Build and run tests
+      run: make test

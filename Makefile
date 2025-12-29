@@ -32,7 +32,7 @@ ifeq ($(V), 1)
 	Q :=
 endif
 
-.PHONY: all clean
+.PHONY: all clean test
 all: $(MILIS) aix-user tools/ar tools/dump tools/ldd
 
 # Objects
@@ -71,6 +71,10 @@ tools/dump: tools/dump.o xcoff.o
 tools/ldd: tools/ldd.o xcoff.o bigar.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+test: aix-user
+	@echo "[+] Running tests..."
+	$(Q)bash $(CURDIR)/examples/test.sh
 
 clean:
 	rm -f $(OBJS)

@@ -1,0 +1,7 @@
+argv[0] = (args_env)
+argv[1] = (a)
+argv[2] = (b)
+argv[3] = (c)
+argv[4] = (d)
+Shell (through env var loop): (SHELL=/bin/bash)
+SHELL is bash!

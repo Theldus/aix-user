@@ -32,8 +32,9 @@ ifeq ($(V), 1)
 	Q :=
 endif
 
-.PHONY: all clean test
-all: $(MILIS) aix-user tools/ar tools/dump tools/ldd
+.PHONY: all clean test install
+all: $(MILIS) aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
+
 
 # Objects
 %.o: %.c
@@ -60,15 +61,15 @@ aix-user: $(OBJS)
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-tools/ar: tools/ar.o bigar.o
+tools/aix-ar: tools/aix-ar.o bigar.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-tools/dump: tools/dump.o xcoff.o
+tools/aix-dump: tools/aix-dump.o xcoff.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-tools/ldd: tools/ldd.o xcoff.o bigar.o
+tools/aix-ldd: tools/aix-ldd.o xcoff.o bigar.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 

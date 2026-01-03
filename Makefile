@@ -35,6 +35,12 @@ endif
 .PHONY: all clean test install
 all: $(MILIS) aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
 
+# Paths
+BINDIR = $(PREFIX)/bin
+MANDIR = $(PREFIX)/man
+ifeq ($(PREFIX),)
+    PREFIX := /usr/local
+endif
 
 # Objects
 %.o: %.c
@@ -76,6 +82,21 @@ tools/aix-ldd: tools/aix-ldd.o xcoff.o bigar.o
 test: aix-user
 	@echo "[+] Running tests..."
 	$(Q)bash $(CURDIR)/examples/test.sh
+
+install: aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
+	@echo "  INSTALL    $@"
+	install -d $(DESTDIR)$(BINDIR)
+	install -m 755 aix-user $(DESTDIR)$(BINDIR)
+	install -m 755 tools/aix-ar   $(DESTDIR)$(BINDIR)
+	install -m 755 tools/aix-dump $(DESTDIR)$(BINDIR)
+	install -m 755 tools/aix-ldd  $(DESTDIR)$(BINDIR)
+
+uninstall:
+	@echo "  UNINSTALL    $@"
+	rm -f $(DESTDIR)$(BINDIR)/aix-user
+	rm -f $(DESTDIR)$(BINDIR)/aix-ar
+	rm -f $(DESTDIR)$(BINDIR)/aix-dump
+	rm -f $(DESTDIR)$(BINDIR)/aix-ldd
 
 clean:
 	rm -f $(OBJS)

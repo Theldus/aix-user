@@ -7,6 +7,6 @@ out
 .bins
 .gdb_history
 aix-user
-tools/ar
-tools/dump
-tools/ldd
+tools/aix-ar
+tools/aix-dump
+tools/aix-ldd

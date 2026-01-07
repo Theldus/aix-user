@@ -497,6 +497,18 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 }
 
 /**
+ * @brief Initialize the VM's heap memory with the addresses
+ * and size previously configured.
+ *
+ * @return Always 0.
+ */
+static int mm_init_heap(void) {
+	if (uc_mem_map(g_uc, HEAP_ADDR, HEAP_SIZE, UC_PROT_ALL))
+		errx(1, "Unable to setup heap!\n");
+	return 0;
+}
+
+/**
  * @brief Initialize memory manager with Unicorn instance.
  *
  * @param uc Unicorn engine instance.
@@ -526,4 +538,6 @@ void mm_init(uc_engine *uc)
 		UC_HOOK_INSN_INVALID, hook_invalid_insn, NULL, 1, 0);
 	if (err)
 		errx(1, "Unable to insert invalid insn hook!\n");
+
+	mm_init_heap();
 }

@@ -40,6 +40,7 @@ function do_test() {
 }
 
 do_test "args_env" 42 a b c d
+do_test "sbrk" 0
 
 if [ ${any_error} -eq 1 ]; then
 	echo "One or more tests have failed!"

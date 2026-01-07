@@ -16,7 +16,7 @@
   	if (args.trace_syscall) { \
       fprintf(stderr, "TRACE %s(", sys); \
       fprintf(stderr, __VA_ARGS__); \
-      fprintf(stderr, ") = %d\n", ret); \
+      fprintf(stderr, ") = 0x%x\n", ret); \
     } \
   } while(0)
 
@@ -45,6 +45,9 @@ extern int aix_read_sysconfig(uc_engine *uc);
 extern int aix___loadx(uc_engine *uc);
 extern int aix_kfcntl(uc_engine *uc);
 extern int aix_vmgetinfo(uc_engine *uc);
+extern int aix_brk(uc_engine *uc);
+extern int aix_sbrk(uc_engine *uc);
+extern int aix___libc_sbrk(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

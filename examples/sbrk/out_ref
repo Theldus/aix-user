@@ -1,0 +1,35 @@
+
+[TEST] sbrk(0) - get current break
+  Initial break: 0x40000000
+  [+] Result: PASS
+
+[TEST] sbrk(4096) - increase heap
+  Old: 0x40000000, New: 0x40001000
+  [+] Result: PASS
+
+[TEST] Write to sbrk-allocated memory
+  [+] Result: PASS
+
+[TEST] sbrk(-2048) - shrink heap
+  Old: 0x40001000, New: 0x40000800
+  [+] Result: PASS
+
+[TEST] brk() - set absolute break address
+  Set break to: 0x40002800
+  [+] Result: PASS
+
+[TEST] Large allocation (16MB)
+  Allocated 16MB at 0x40002800
+  [+] Result: PASS
+
+[TEST] malloc integration test
+  malloc'ed: 0x41002808 0x41102818 0x41302828 0x41702838
+  [+] Result: PASS
+
+[TEST] brk(0x1000) - invalid address (should fail)
+  Correctly rejected with ENOMEM
+  [+] Result: PASS
+
+=================================
+All tests passed!
+=================================

@@ -107,6 +107,9 @@ static struct sys_table_entry sys_table[] = {
 	{"__loadx",        aix___loadx},
 	{"kfcntl",         aix_kfcntl},
 	{"vmgetinfo",      aix_vmgetinfo},
+	{"brk",            aix_brk},
+	{"sbrk",           aix_sbrk},
+	{"__libc_sbrk",    aix___libc_sbrk},
 };
 
 /**

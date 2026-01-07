@@ -180,6 +180,9 @@ There's simply no way to implement everything.
 | 149            | _exit              | Implemented           |
 | 454            | kioctl             | Partial               |
 | 542            | read_sysconfig     | Stub                  |
+| 559            | __libc_sbrk        | Implemented           |
+| 560            | sbrk               | Implemented           |
+| 561            | brk                | Implemented           |
 | 688            | vmgetinfo          | Partial               |
 | 827            | kfcntl             | Partial               |
 | 837            | __loadx            | Stub                  |

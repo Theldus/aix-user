@@ -38,6 +38,10 @@
 #define STACK_ADDR 0x30000000
 #define STACK_SIZE (32ULL*1024*1024)  /* bytes. */
 
+/* Heap. */
+#define HEAP_ADDR 0x40000000 /* Starts at 1GiB. */ 
+#define HEAP_SIZE 0xC0000000 /* 3GiB.           */
+
 /* Unix function descriptors. */
 #define UNIX_DESC_ADDR 0x0F000000  /* Descriptor heap */
 #define UNIX_DESC_SIZE 0x00100000  /* 1MB for descriptors */

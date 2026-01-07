@@ -25,6 +25,7 @@ OBJS += syscalls/kioctl.o
 OBJS += syscalls/read_sysconfig.o
 OBJS += syscalls/__loadx.o
 OBJS += syscalls/kfcntl.o
+OBJS += syscalls/vmgetinfo.o
 
 # Pretty print
 Q := @

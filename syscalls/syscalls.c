@@ -106,6 +106,7 @@ static struct sys_table_entry sys_table[] = {
 	{"read_sysconfig", aix_read_sysconfig},
 	{"__loadx",        aix___loadx},
 	{"kfcntl",         aix_kfcntl},
+	{"vmgetinfo",      aix_vmgetinfo},
 };
 
 /**

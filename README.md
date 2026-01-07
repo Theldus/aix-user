@@ -180,6 +180,7 @@ There's simply no way to implement everything.
 | 149            | _exit              | Implemented           |
 | 454            | kioctl             | Partial               |
 | 542            | read_sysconfig     | Stub                  |
+| 688            | vmgetinfo          | Partial               |
 | 827            | kfcntl             | Partial               |
 | 837            | __loadx            | Stub                  |
 

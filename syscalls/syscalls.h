@@ -48,6 +48,8 @@ extern int aix_vmgetinfo(uc_engine *uc);
 extern int aix_brk(uc_engine *uc);
 extern int aix_sbrk(uc_engine *uc);
 extern int aix___libc_sbrk(uc_engine *uc);
+extern int aix_getuidx(uc_engine *uc);
+extern int aix_getgidx(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

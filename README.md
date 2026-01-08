@@ -177,6 +177,8 @@ There's simply no way to implement everything.
 | Syscall Number | Name               | Implementation Status |
 |:--------------:|:------------------:|:---------------------:|
 | 10             | kwrite             | Implemented           |
+| 112            | getuidx            | Implemented           |
+| 113            | getgidx            | Implemented           |
 | 149            | _exit              | Implemented           |
 | 454            | kioctl             | Partial               |
 | 542            | read_sysconfig     | Stub                  |

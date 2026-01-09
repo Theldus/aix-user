@@ -274,7 +274,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	struct xcoff_ldr_sym_tbl_hdr32 *sym;
 	struct xcoff_ldr_rel_tbl_hdr32 *rt;
 	struct xcoff_ldr_hdr32 *ldr;
-	u32 addr, value;
+	u32 addr, value, addend;
 	int symidx;
 	int ret;
 	u32 i;
@@ -324,7 +324,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			value = mm_read_u32(addr, &ret);
 			if (ret < 0)
 				errx(1, "Unable to read address 0x%x to relocate!\n", addr);
-			
+
 			/* Add section-specific delta to adjust the pointer */
 			value += lc->deltas[rt[i].l_symndx];
 		}
@@ -335,9 +335,14 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			sym    = &lc->xcoff.ldr.symtbl[symidx];
 
 			if (sym->l_symtype & L_IMPORT) {
-				value = resolve_import(uc, sym, lc);
-				LOADER("Imported sym (%s), resolved, addr=0x%08x\n",
-				       sym->u.l_strtblname, value);
+				/* Read the original value (addend) from the location */
+				addend = mm_read_u32(addr, &ret);
+				if (ret < 0)
+					errx(1, "Unable to read address 0x%x to relocate!\n", addr);
+
+				value = resolve_import(uc, sym, lc) + addend;
+				LOADER("Imported sym (%s), resolved, addr=0x%08x (addend=0x%x)\n",
+				       sym->u.l_strtblname, value, addend);
 			}
 
 			/* Local symbol - already relocated in symbol table. */

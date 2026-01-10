@@ -523,6 +523,14 @@ void mm_init(uc_engine *uc)
 	next_text_base = TEXT_START + EXEC_TEXT_SIZE;
 	next_data_base = DATA_START + EXEC_DATA_SIZE;
 
+	/*
+	 * AIX deliberately maps the page 0 on userspace and libc, programs
+	 * and etc works based on this assumption, so we need to mimick
+	 * this cursed behavior too =/.
+	 */
+	if (uc_mem_map(uc, 0, 4096, UC_PROT_READ))
+		errx(1, "Unable to map page 0!\n");
+
 	/* Troubleshooting hooks. */
 	err = uc_hook_add(g_uc, &inv_read,
 		UC_HOOK_MEM_READ_UNMAPPED|

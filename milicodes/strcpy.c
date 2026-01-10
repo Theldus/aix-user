@@ -14,6 +14,7 @@
  * @return Pointer to destination string.
  */
 char *strcpy(char *restrict s1, const char *restrict s2) {
+	char *r = s1;
 	for (; (*s1 = *s2); s1++, s2++);
-	return s1;
+	return r;
 }

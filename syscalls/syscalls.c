@@ -112,6 +112,7 @@ static struct sys_table_entry sys_table[] = {
 	{"__libc_sbrk",    aix___libc_sbrk},
 	{"getuidx",        aix_getuidx},
 	{"getgidx",        aix_getgidx},
+	{"statx",          aix_statx},
 };
 
 /**

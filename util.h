@@ -20,10 +20,13 @@ struct args {
 extern struct args args;
 
 typedef uint8_t  u8;
+typedef  int8_t  s8;
 typedef uint16_t u16;
+typedef  int16_t s16;
 typedef uint32_t u32;
 typedef  int32_t s32;
 typedef uint64_t u64;
+typedef  int64_t s64;
 
 #define min(x,y) ((x)<(y)?(x):(y))
 #define max(x,y) ((x)>(y)?(x):(y))
@@ -39,6 +42,19 @@ typedef uint64_t u64;
     do {field = be16toh(field);} while (0)
 #define CONV32(field) \
     do {field = be32toh(field);} while (0)
+
+/**
+ * From StackOverflow:
+ *   https://stackoverflow.com/a/28592202
+ * Credits goes to @deltamind106, thanks =)
+ */
+#if __BIG_ENDIAN__
+#define htonll(x) (x)
+#define ntohll(x) (x)
+#else
+#define htonll(x) (((uint64_t)htonl((x)&0xFFFFFFFF)<<32)|htonl((x) >> 32))
+#define ntohll(x) (((uint64_t)ntohl((x)&0xFFFFFFFF)<<32)|ntohl((x) >> 32))
+#endif
 
 extern void register_dump(uc_engine *uc);
 

@@ -10,3 +10,4 @@ aix-user
 tools/aix-ar
 tools/aix-dump
 tools/aix-ldd
+examples/statx/reference

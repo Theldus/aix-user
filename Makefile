@@ -83,7 +83,11 @@ tools/aix-ldd: tools/aix-ldd.o xcoff.o bigar.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-test: aix-user
+examples/statx/reference: examples/statx/reference.c
+	@echo "  LINK    $@"
+	$(Q)$(CC) -o $@ $^
+
+test: aix-user examples/statx/reference
 	@echo "[+] Running tests..."
 	$(Q)bash $(CURDIR)/examples/test.sh
 
@@ -109,3 +113,4 @@ clean:
 	rm -f tools/ar
 	rm -f tools/dump
 	rm -f tools/ldd
+	rm -f examples/statx/reference

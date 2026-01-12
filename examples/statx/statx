@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+#
+# aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
+# on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
+# Made by Theldus, 2025-2026
+#
+
+CURDIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+ROOTDIR="${CURDIR}/../../"
+AIX_USER="${ROOTDIR}/aix-user"
+LIBS="${ROOTDIR}/.libs"
+
+cd "${CURDIR}"
+
+any_error=0
+test_num=0
+
+function run_test() {
+	local aix_variant="$1"
+	local linux_variant="$2"
+	local target="$3"
+
+	test_num=$((test_num+1))
+	printf "  statx #${test_num} (${aix_variant})... "
+
+	# Run AIX version via emulator
+	"${AIX_USER}" -L "${LIBS}" test_statx "${aix_variant}" "${target}" &> "out_aix"
+	aix_rc=$?
+
+	# Run Linux reference
+	./reference "${linux_variant}" "${target}" &> "out_linux"
+	linux_rc=$?
+
+	# Compare return codes
+	if [ "${aix_rc}" -ne "${linux_rc}" ]; then
+		echo "FAIL (rc: ${aix_rc} vs ${linux_rc})"
+		any_error=1
+		return
+	fi
+
+	# Compare outputs
+	if ! diff -q "out_aix" "out_linux" &>/dev/null; then
+		echo "FAIL (output mismatch)"
+		diff -u "out_linux" "out_aix"
+		any_error=1
+		return
+	fi
+
+	echo "OK"
+}
+
+# Create test symlink
+ln -sf "reference.c" "lnk-reference.c"
+
+# Test all 3 AIX stat variants against Linux stat on regular file
+run_test "stat" "stat" "reference.c"
+run_test "stat64" "stat" "reference.c"
+run_test "stat64x" "stat" "reference.c"
+
+# Test all 3 AIX lstat variants against Linux lstat on symlink
+run_test "lstat" "lstat" "lnk-reference.c"
+run_test "lstat64" "lstat" "lnk-reference.c"
+run_test "lstat64x" "lstat" "lnk-reference.c"
+
+# Cleanup
+rm -f "lnk-reference.c" out_aix out_linux
+
+exit "${any_error}"

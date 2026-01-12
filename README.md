@@ -181,6 +181,7 @@ There's simply no way to implement everything.
 | 113            | getgidx            | Implemented           |
 | 149            | _exit              | Implemented           |
 | 454            | kioctl             | Partial               |
+| 481            | statx              | Partial               |
 | 542            | read_sysconfig     | Stub                  |
 | 559            | __libc_sbrk        | Implemented           |
 | 560            | sbrk               | Implemented           |

@@ -13,6 +13,7 @@
 
 u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym);
 void unix_set_errno(u32 err);
+void unix_set_conv_errno(u32 err);
 void unix_init(uc_engine *uc);
 
 /* errno and _environ. */

@@ -4,11 +4,11 @@
  * Made by Theldus, 2025
  */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "syscalls.h"
 #include "unix.h"
+#include "aix_errno.h"
 
 #define TXISATTY ('X'<<8)
 
@@ -45,7 +45,7 @@ int aix_kioctl(uc_engine *uc)
 	}
 
 	if (o_errno != errno)
-		unix_set_errno(errno);
+		unix_set_conv_errno(errno);
 
 	TRACE("kioctl", "%d, %d, %x, %x", fd, cmd, arg, ext);
 	return ret;

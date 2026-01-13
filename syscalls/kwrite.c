@@ -51,7 +51,7 @@ int aix_kwrite(uc_engine *uc)
 	/* Perform the actual write on the host. */
 	ret = write(vm_fd, h_buff, vm_count);
 
-	TRACE("kwrite", "%d, %.*s, %d", vm_fd, vm_count, h_buff, vm_count);
+	TRACE("kwrite", "%d, %x, %d", vm_fd, vm_buff, vm_count);
 	free(h_buff);
 	return ret;
 }

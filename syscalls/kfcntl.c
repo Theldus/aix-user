@@ -4,12 +4,12 @@
  * Made by Theldus, 2025
  */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "syscalls.h"
 #include "unix.h"
+#include "aix_errno.h"
 
 static u32 o_errno;
 
@@ -48,7 +48,7 @@ int aix_kfcntl(uc_engine *uc)
 	}
 
 	if (lnx_ret < 0) {
-		unix_set_errno(errno);
+		unix_set_conv_errno(errno);
 		goto out;
 	}
 

@@ -4,7 +4,6 @@
  * Made by Theldus, 2025-2026
  */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,6 +13,7 @@
 #include <sys/sysmacros.h>
 #include "syscalls.h"
 #include "unix.h"
+#include "aix_errno.h"
 
 static u32 o_errno;
 static struct stat linux_st;
@@ -252,7 +252,7 @@ int aix_statx(uc_engine *uc)
 	size_t exp_len;
 
 	if (uc_mem_read(uc, path, &spath, sizeof spath)) {
-		unix_set_errno(EINVAL);
+		unix_set_errno(AIX_EINVAL);
 		goto out;
 	}
 
@@ -261,7 +261,7 @@ int aix_statx(uc_engine *uc)
 		exp_len = sizeof(struct aix_stat64x);
 		/* STX_64X requires exact size match */
 		if (length != 0 && length != exp_len) {
-			unix_set_errno(EINVAL);
+			unix_set_errno(AIX_EINVAL);
 			ret = -1;
 			goto out;
 		}
@@ -275,7 +275,7 @@ int aix_statx(uc_engine *uc)
 	if (length == 0)
 		length = exp_len;
 	else if (length > exp_len) {
-		unix_set_errno(EINVAL);
+		unix_set_errno(AIX_EINVAL);
 		ret = -1;
 		goto out;
 	}
@@ -287,13 +287,13 @@ int aix_statx(uc_engine *uc)
 		ret = stat(spath, &linux_st);
 
 	if (ret < 0) {
-		unix_set_errno(errno);
+		unix_set_conv_errno(errno);
 		goto out;
 	}
 
 	/* Check for EOVERFLOW on normal stat with large files */
 	if (!(cmd & (STX_64|STX_64X)) && linux_st.st_size > 0x7FFFFFFF) {
-		unix_set_errno(EOVERFLOW);
+		unix_set_errno(AIX_EOVERFLOW);
 		ret = -1;
 		goto out;
 	}
@@ -312,7 +312,7 @@ int aix_statx(uc_engine *uc)
 
 	/* Write the converted structure to destination */
 	if (uc_mem_write(uc, buff, st, length)) {
-		unix_set_errno(EINVAL);
+		unix_set_errno(AIX_EINVAL);
 		ret = -1;
 		goto out;
 	}

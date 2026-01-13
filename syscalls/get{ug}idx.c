@@ -5,12 +5,12 @@
  */
 
 #define _GNU_SOURCE
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "syscalls.h"
 #include "unix.h"
+#include "aix_errno.h"
 
 #define	AIX_ID_EFFECTIVE 1
 #define	AIX_ID_REAL      2
@@ -54,7 +54,7 @@ int aix_getuidx(uc_engine *uc)
 			break;
 		
 		default:
-			unix_set_errno(EINVAL);
+			unix_set_errno(AIX_EINVAL);
 			break;
 	}
 
@@ -98,7 +98,7 @@ int aix_getgidx(uc_engine *uc)
 			break;
 		
 		default:
-			unix_set_errno(EINVAL);
+			unix_set_errno(AIX_EINVAL);
 			break;
 	}
 

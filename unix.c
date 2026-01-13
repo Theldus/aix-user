@@ -36,6 +36,7 @@
 #include "milicode.h"
 #include "mm.h"
 #include "util.h"
+#include "aix_errno.h"
 
 /**
  * Debug logging macro for syscall subsystem.
@@ -75,6 +76,14 @@ u32 vm_environ;
  */
 void unix_set_errno(u32 err) {
 	mm_write_u32(vm_errno, err);
+}
+
+/**
+ * @brief Sets a Linux2AIX converted errno to the VM's/guest errno.
+ * @param err Errno value to be set.
+ */
+void unix_set_conv_errno(u32 err) {
+	mm_write_u32(vm_errno, errno_linux2aix(err));
 }
 
 /**

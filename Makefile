@@ -7,7 +7,8 @@
 CC     ?= cc
 #CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable -fsanitize=address
 #LDLIBS += $(shell pkg-config --libs unicorn) -fsanitize=address
-CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes -I$(CURDIR)/syscalls
+CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes
+CFLAGS += -I$(CURDIR)/syscalls -I$(CURDIR)/syscalls/include
 CFLAGS += $(shell pkg-config --cflags unicorn) -O3 -Wall -Wno-unused-variable
 LDLIBS += $(shell pkg-config --libs unicorn) 
 MILIS   = milicodes/strlen.h  milicodes/memcmp.h milicodes/memmove.h
@@ -18,7 +19,7 @@ OBJS  = aix-user.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
 OBJS += util.o milicodes/milicode.o insn_emu.o
 
 # Syscalls
-OBJS += syscalls/syscalls.o
+OBJS += syscalls/syscalls.o syscalls/errno.o
 OBJS += syscalls/kwrite.o
 OBJS += syscalls/__exit.o
 OBJS += syscalls/kioctl.o

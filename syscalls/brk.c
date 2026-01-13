@@ -4,12 +4,12 @@
  * Made by Theldus, 2025-2026
  */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "mm.h"
+#include "aix_errno.h"
 
 static int silence_trace;
 static u32 curr_brk = HEAP_ADDR;
@@ -31,7 +31,7 @@ int aix_brk(uc_engine *uc)
 
 	/* Wrong address. */
 	if (addr < HEAP_ADDR) {
-		unix_set_errno(ENOMEM);
+		unix_set_errno(AIX_ENOMEM);
 		ret = -1;
 		goto out;
 	}
@@ -62,7 +62,7 @@ int aix_sbrk(uc_engine *uc)
 
 	if (incr >= 0) {
 		if (curr_brk > UINT32_MAX - (u32)incr) {
-			unix_set_errno(ENOMEM);
+			unix_set_errno(AIX_ENOMEM);
 			ret = -1;
 			goto out;
 		}
@@ -72,7 +72,7 @@ int aix_sbrk(uc_engine *uc)
 	else {
 		decr = (u32)(-incr);
 		if (curr_brk < decr || (curr_brk-decr) < HEAP_ADDR) {
-			unix_set_errno(ENOMEM);
+			unix_set_errno(AIX_ENOMEM);
 			ret = -1;
 			goto out;
 		}

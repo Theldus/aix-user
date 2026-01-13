@@ -4,12 +4,12 @@
  * Made by Theldus, 2025-2026
  */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "unix.h"
 #include "syscalls.h"
+#include "aix_errno.h"
 
 /* Command values. */
 #define VM_PAGE_INFO 7
@@ -54,13 +54,13 @@ int aix_vmgetinfo(uc_engine *uc)
 
 	if (cmd != VM_PAGE_INFO) {
 		ret = -1;
-		unix_set_errno(EINVAL);
+		unix_set_errno(AIX_EINVAL);
 		goto out;
 	}
 
 	if (uc_mem_read(uc, out, &pg_info, sizeof pg_info)) {
 		ret = -1;
-		unix_set_errno(EINVAL);
+		unix_set_errno(AIX_EINVAL);
 		goto out;
 	}
 

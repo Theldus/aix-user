@@ -113,6 +113,7 @@ static struct sys_table_entry sys_table[] = {
 	{"getuidx",        aix_getuidx},
 	{"getgidx",        aix_getgidx},
 	{"statx",          aix_statx},
+	{"kopen",          aix_kopen},
 };
 
 /**

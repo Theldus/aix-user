@@ -30,6 +30,7 @@ OBJS += syscalls/vmgetinfo.o
 OBJS += syscalls/brk.o
 OBJS += syscalls/get{ug}idx.o
 OBJS += syscalls/statx.o
+OBJS += syscalls/kopen.o
 
 # Pretty print
 Q := @

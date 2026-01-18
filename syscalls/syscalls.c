@@ -114,6 +114,7 @@ static struct sys_table_entry sys_table[] = {
 	{"getgidx",        aix_getgidx},
 	{"statx",          aix_statx},
 	{"kopen",          aix_kopen},
+	{"close",          aix_close},
 };
 
 /**

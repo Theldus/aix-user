@@ -63,6 +63,11 @@ run_test "lstat" "lstat" "lnk-reference.c"
 run_test "lstat64" "lstat" "lnk-reference.c"
 run_test "lstat64x" "lstat" "lnk-reference.c"
 
+# Test all 3 AIX fstat variants against Linux fstat on regular file
+run_test "fstat" "fstat" "reference.c"
+run_test "fstat64" "fstat" "reference.c"
+run_test "fstat64x" "fstat" "reference.c"
+
 # Cleanup
 rm -f "lnk-reference.c" out_aix out_linux
 

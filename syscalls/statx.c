@@ -223,7 +223,7 @@ stat64x_linux2aix(struct aix_stat64x *aix_st, const struct stat *linux_st)
 }
 
 /**
- * @brief statx syscall handler.
+ * @brief statx/fstatx syscall handler.
  *
  * Very initial implementation of statx
  *
@@ -240,20 +240,22 @@ stat64x_linux2aix(struct aix_stat64x *aix_st, const struct stat *linux_st)
  * Return value (in r3):
  *   Returns 0 if success, -1 and errno otherwise.
  */
-int aix_statx(uc_engine *uc)
+static int do_stat(uc_engine *uc, int have_fd)
 {
 	char spath[1024] = {0};
-	u32 path   = read_1st_arg();
-	u32 buff   = read_2nd_arg();
-	u32 length = read_3rd_arg();
-	u32 cmd    = read_4th_arg();
-	int ret    = -1;
+	u32 path_fd = read_1st_arg();
+	u32 buff    = read_2nd_arg();
+	u32 length  = read_3rd_arg();
+	u32 cmd     = read_4th_arg();
+	int ret     = -1;
 	void *st;
 	size_t exp_len;
 
-	if (uc_mem_read(uc, path, &spath, sizeof spath)) {
-		unix_set_errno(AIX_EINVAL);
-		goto out;
+	if (!have_fd) {
+		if (uc_mem_read(uc, path_fd, &spath, sizeof spath)) {
+			unix_set_errno(AIX_EINVAL);
+			goto out;
+		}
 	}
 
 	/* Determine which structure type based on command flags */
@@ -280,11 +282,15 @@ int aix_statx(uc_engine *uc)
 		goto out;
 	}
 
-	/* Perform stat or lstat based on STX_LINK flag */
-	if (cmd & STX_LINK)
-		ret = lstat(spath, &linux_st);
+	/* Perform stat,lstat or fstat based on STX_LINK and have_fd flags. */
+	if (!have_fd) {
+		if (cmd & STX_LINK)
+			ret = lstat(spath, &linux_st);
+		else
+			ret = stat(spath, &linux_st);
+	}
 	else
-		ret = stat(spath, &linux_st);
+		ret = fstat(path_fd, &linux_st);
 
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
@@ -319,6 +325,23 @@ int aix_statx(uc_engine *uc)
 
 	ret = 0;
 out:
-	TRACE("statx", "\"%s\", %x, %u, 0%o", spath, buff, length, cmd);
+	if (!have_fd)
+		TRACE("statx", "\"%s\", %x, %u, 0%o", spath, buff, length, cmd);
+	else
+		TRACE("fstatx", "%u, %x, %u, 0%o", path_fd, buff, length, cmd);
 	return ret;
+}
+
+/**
+ * AIX's statx entrypoint
+ */
+int aix_statx(uc_engine *uc) {
+	return do_stat(uc, 0);
+}
+
+/**
+ * AIX's fstatx entrypoint
+ */
+int aix_fstatx(uc_engine *uc) {
+	return do_stat(uc, 1);
 }

@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -59,16 +61,26 @@ int main(int argc, char *argv[])
 {
 	struct stat sb;
 	int ret;
+	int fd = -1;
 
 	if (argc != 3) {
-		fprintf(stderr, "Usage: %s <stat|lstat> <path>\n", argv[0]);
+		fprintf(stderr, "Usage: %s <stat|lstat|fstat> <path>\n", argv[0]);
 		exit(1);
 	}
 
+	int is_fstat = (strstr(argv[1], "fstat") != NULL);
 	int is_lstat = (strstr(argv[1], "lstat") != NULL);
 
-	/* Call appropriate function */
-	ret = is_lstat ? lstat(argv[2], &sb) : stat(argv[2], &sb);
+	/* Open file if fstat variant */
+	if (is_fstat) {
+		fd = open(argv[2], O_RDONLY);
+		if (fd < 0) { perror("open"); exit(1); }
+		ret = fstat(fd, &sb);
+		close(fd);
+	} else {
+		ret = is_lstat ? lstat(argv[2], &sb) : stat(argv[2], &sb);
+	}
+
 	if (ret == -1) {
 		perror(argv[1]);
 		exit(1);

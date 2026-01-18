@@ -56,6 +56,7 @@ extern int aix_statx(uc_engine *uc);
 extern int aix_kopen(uc_engine *uc);
 extern int aix_close(uc_engine *uc);
 extern int aix_kread(uc_engine *uc);
+extern int aix_fstatx(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

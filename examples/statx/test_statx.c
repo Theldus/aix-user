@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -64,30 +66,50 @@ int main(int argc, char **argv)
 	} sb;
 
 	if (argc != 3) {
-		fprintf(stderr, "Usage: %s <stat|stat64|stat64x|lstat|lstat64|lstat64x> <path>\n",
+		fprintf(stderr, "Usage: %s <stat|stat64|stat64x|lstat|lstat64|lstat64x|fstat|fstat64|fstat64x> <path>\n",
 			argv[0]);
 		exit(1);
 	}
 
 	int ret;
+	int fd = -1;
+	int is_fstat = (strstr(argv[1], "fstat") != NULL);
 	int is_lstat = (strstr(argv[1], "lstat") != NULL);
 	int is_64x   = (strstr(argv[1], "64x")   != NULL);
 	int is_64    = (strstr(argv[1], "64")    != NULL && !is_64x);
 
+	/* Open file if fstat variant */
+	if (is_fstat) {
+		fd = open(argv[2], O_RDONLY);
+		if (fd < 0) { perror("open"); exit(1); }
+	}
+
 	/* Call appropriate function */
 	if (is_64x) {
-		ret = is_lstat ? lstat64x(argv[2], &sb.s64x) : stat64x(argv[2], &sb.s64x);
+		if (is_fstat)
+			ret = fstat64x(fd, &sb.s64x);
+		else
+			ret = is_lstat ? lstat64x(argv[2], &sb.s64x) : stat64x(argv[2], &sb.s64x);
 		if (ret == -1) { perror(argv[1]); exit(1); }
 		PRINT_STAT(sb.s64x, major64(sb.s64x.st_dev), minor64(sb.s64x.st_dev));
 	} else if (is_64) {
-		ret = is_lstat ? lstat64(argv[2], &sb.s64) : stat64(argv[2], &sb.s64);
+		if (is_fstat)
+			ret = fstat64(fd, &sb.s64);
+		else
+			ret = is_lstat ? lstat64(argv[2], &sb.s64) : stat64(argv[2], &sb.s64);
 		if (ret == -1) { perror(argv[1]); exit(1); }
 		PRINT_STAT(sb.s64, major(sb.s64.st_dev), minor(sb.s64.st_dev));
 	} else {
-		ret = is_lstat ? lstat(argv[2], &sb.s) : stat(argv[2], &sb.s);
+		if (is_fstat)
+			ret = fstat(fd, &sb.s);
+		else
+			ret = is_lstat ? lstat(argv[2], &sb.s) : stat(argv[2], &sb.s);
 		if (ret == -1) { perror(argv[1]); exit(1); }
 		PRINT_STAT(sb.s, major(sb.s.st_dev), minor(sb.s.st_dev));
 	}
+
+	if (fd >= 0)
+		close(fd);
 
 	return 0;
 }

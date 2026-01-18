@@ -177,6 +177,7 @@ There's simply no way to implement everything.
 | Syscall Number | Name               | Implementation Status |
 |:--------------:|:------------------:|:---------------------:|
 | 5              | close              | Implemented           |
+| 7              | kread              | Implemented           |
 | 10             | kwrite             | Implemented           |
 | 112            | getuidx            | Implemented           |
 | 113            | getgidx            | Implemented           |

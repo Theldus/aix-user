@@ -32,6 +32,7 @@ OBJS += syscalls/get{ug}idx.o
 OBJS += syscalls/statx.o
 OBJS += syscalls/kopen.o
 OBJS += syscalls/close.o
+OBJS += syscalls/kread.o
 
 # Pretty print
 Q := @

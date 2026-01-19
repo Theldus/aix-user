@@ -33,6 +33,7 @@ OBJS += syscalls/statx.o
 OBJS += syscalls/kopen.o
 OBJS += syscalls/close.o
 OBJS += syscalls/kread.o
+OBJS += syscalls/klseek_lseek.o
 
 # Pretty print
 Q := @

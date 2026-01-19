@@ -182,6 +182,8 @@ There's simply no way to implement everything.
 | 112            | getuidx            | Implemented           |
 | 113            | getgidx            | Implemented           |
 | 149            | _exit              | Implemented           |
+| 399            | klseek             | Implemented           |
+| 401            | lseek              | Implemented           |
 | 454            | kioctl             | Partial               |
 | 472            | kopen              | Partial/Good enough   |
 | 480            | fstatx             | Partial               |

@@ -70,7 +70,7 @@ static void parse_args(int *argc, char ***argv)
 	char **orig_argv = *argv;
 
 	/* Parse options. */
-	while ((c = getopt(*argc, *argv, "hL:slg:d")) != -1)
+	while ((c = getopt(*argc, *argv, "+hL:slg:d")) != -1)
 	{
 		switch (c) {
 		case 'h':

@@ -184,6 +184,7 @@ There's simply no way to implement everything.
 | 149            | _exit              | Implemented           |
 | 399            | klseek             | Implemented           |
 | 401            | lseek              | Implemented           |
+| 451            | getdirent64        | Implemented           |
 | 454            | kioctl             | Partial               |
 | 472            | kopen              | Partial/Good enough   |
 | 480            | fstatx             | Partial               |

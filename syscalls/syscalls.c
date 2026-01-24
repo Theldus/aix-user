@@ -119,6 +119,7 @@ static struct sys_table_entry sys_table[] = {
 	{"fstatx",         aix_fstatx},
 	{"klseek",         aix_klseek},
 	{"lseek",          aix_lseek},
+	{"getdirent64",    aix_getdirent64},
 };
 
 /**

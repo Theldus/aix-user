@@ -64,6 +64,7 @@ function do_script_test() {
 do_test "args_env" 42 a b c d
 do_test "sbrk" 0
 do_script_test "statx" 0
+do_script_test "getdirent" 0
 
 if [ "${any_error}" -eq 1 ]; then
 	echo "One or more tests have failed!"

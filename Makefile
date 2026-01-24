@@ -34,6 +34,7 @@ OBJS += syscalls/kopen.o
 OBJS += syscalls/close.o
 OBJS += syscalls/kread.o
 OBJS += syscalls/klseek_lseek.o
+OBJS += syscalls/getdirent.o
 
 # Pretty print
 Q := @
@@ -92,7 +93,7 @@ examples/statx/reference: examples/statx/reference.c
 	@echo "  LINK    $@"
 	$(Q)$(CC) -o $@ $^
 
-test: aix-user examples/statx/reference
+test: aix-user examples/statx/reference examples/getdirent/reference
 	@echo "[+] Running tests..."
 	$(Q)bash $(CURDIR)/examples/test.sh
 
@@ -119,3 +120,4 @@ clean:
 	rm -f tools/dump
 	rm -f tools/ldd
 	rm -f examples/statx/reference
+	rm -f examples/getdirent/reference

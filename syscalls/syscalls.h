@@ -59,6 +59,7 @@ extern int aix_kread(uc_engine *uc);
 extern int aix_fstatx(uc_engine *uc);
 extern int aix_klseek(uc_engine *uc);
 extern int aix_lseek(uc_engine *uc);
+extern int aix_getdirent64(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

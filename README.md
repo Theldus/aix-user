@@ -186,6 +186,7 @@ There's simply no way to implement everything.
 | 401            | lseek              | Implemented           |
 | 451            | getdirent64        | Implemented           |
 | 454            | kioctl             | Partial               |
+| 464            | mntctl             | Stub                  |
 | 472            | kopen              | Partial/Good enough   |
 | 480            | fstatx             | Partial               |
 | 481            | statx              | Partial               |

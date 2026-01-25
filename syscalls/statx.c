@@ -144,7 +144,12 @@ stat_linux2aix(struct aix_stat *aix_st, const struct stat *linux_st)
      * at the moment. */
 	aix_st->st_flag  = 0;
 	aix_st->st_vfstype = 0;
-	aix_st->st_vfs     = 0;
+	/*
+	 * st_vfs is the unique mount ID. AIX uses this to detect mount point
+	 * boundaries in getcwd(). We use the device number as a unique identifier
+	 * for each mount point.
+	 */
+	aix_st->st_vfs     = htonl(linux_st->st_dev);
 	aix_st->st_type    = 0;
 	aix_st->st_gen     = 0;
 }
@@ -181,7 +186,7 @@ stat64_linux2aix(struct aix_stat64 *aix_st, const struct stat *linux_st)
 	/* No-equivalent fields. */
 	aix_st->st_flag  = 0;
 	aix_st->st_vfstype = 0;
-	aix_st->st_vfs     = 0;
+	aix_st->st_vfs     = htonl(linux_st->st_dev);
 	aix_st->st_type    = 0;
 	aix_st->st_gen     = 0;
 }
@@ -217,7 +222,7 @@ stat64x_linux2aix(struct aix_stat64x *aix_st, const struct stat *linux_st)
 	/* No-equivalent fields. */
 	aix_st->st_flag  = 0;
 	aix_st->st_vfstype = 0;
-	aix_st->st_vfs     = 0;
+	aix_st->st_vfs     = htonl(linux_st->st_dev);
 	aix_st->st_type    = 0;
 	aix_st->st_gen     = 0;
 }

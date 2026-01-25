@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #include <stdlib.h>
@@ -26,7 +26,16 @@ static u32 o_errno;
  * Return value (in r3):
  *   If kfcntl subroutine fails, a value of -1 is returned. The errno
  *   global variable is set to indicate the error. Otherwise,
- *    - F_GETFL: Return the fd flags.
+ *    - F_GETFL: Return the fd status and access modes.
+ *    - F_GETFD: Get flags associated with FD (FD_CLOEXEC if set).
+ *    - F_SETFD: Set flags to the FD (FD_CLOEXEC).
+ *
+ * !!Note:!! The flags handled here have the exact same values on Linux
+ * and AIX so thats why I am not translating them. For *any* new flags,
+ * please make sure they are compatible between systems.
+ *
+ * Compatible constants:
+ *   F_GETFL, F_GETFD, F_SETFD, FD_CLOEXEC, O_WRONLY, O_RDWR
  */
 int aix_kfcntl(uc_engine *uc)
 {
@@ -41,7 +50,20 @@ int aix_kfcntl(uc_engine *uc)
 	switch (cmd) {
 		case F_GETFL:
 			lnx_ret = fcntl(fd, cmd);
+			if (lnx_ret & O_WRONLY)
+				ret |= O_WRONLY;
+			else if (lnx_ret & O_RDWR)
+				ret |= O_RDWR;
 			break;
+
+		case F_GETFD:
+			lnx_ret = fcntl(fd, cmd);
+			break;
+
+		case F_SETFD:
+			lnx_ret = fcntl(fd, cmd, arg);
+			break;
+
 		default:
 			warn("kfcntl: unknown command: %d\n", cmd);
 			break;
@@ -52,17 +74,7 @@ int aix_kfcntl(uc_engine *uc)
 		goto out;
 	}
 
-	/* These flags match AIX's flags, thats why I'm not translating them.
-	 * For my future self:
-	 *   When updating this, please make sure the flags
-	 *   are equal in both systems, otherwise, convert them =).
-	 */
 	ret = 0;
-	if (lnx_ret & O_WRONLY)
-		ret |= O_WRONLY;
-	else if (lnx_ret & O_RDWR)
-		ret |= O_RDWR;
-
 out:
 	TRACE("kfcntl", "%d, %d, %x", fd, cmd, arg);
 	return ret;

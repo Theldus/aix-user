@@ -121,6 +121,7 @@ static struct sys_table_entry sys_table[] = {
 	{"lseek",          aix_lseek},
 	{"getdirent64",    aix_getdirent64},
 	{"mntctl",         aix_mntctl},
+	{"sys_parm",       aix_sys_parm},
 };
 
 /**

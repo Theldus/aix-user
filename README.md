@@ -160,7 +160,7 @@ other features), the approach is 'binary-based': when the support for a new
 binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `cat`,
-`dump`, `echo`, `head`, `pwd`, `tail`, `wc`.
+`dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `sed`, `tail`, `wc`.
 
 [examples/]: examples/
 
@@ -181,6 +181,7 @@ edge cases too.
 | 149            | _exit              | Implemented           |
 | 399            | klseek             | Implemented           |
 | 401            | lseek              | Implemented           |
+| 411            | sys_parm           | Partial               |
 | 451            | getdirent64        | Implemented           |
 | 454            | kioctl             | Partial               |
 | 464            | mntctl             | Stub                  |

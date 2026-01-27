@@ -36,6 +36,7 @@ OBJS += syscalls/kread.o
 OBJS += syscalls/klseek_lseek.o
 OBJS += syscalls/getdirent.o
 OBJS += syscalls/mntctl.o
+OBJS += syscalls/sys_parm.o
 
 # Pretty print
 Q := @

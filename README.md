@@ -24,7 +24,7 @@ emulation, not userspace!
 `aix-user` uses [Unicorn] underneath to emulate a 32-bit PowerPC CPU. It parses 
 XCOFF32 binaries and Big-AR archives, implements a dynamic loader for symbol 
 resolution and relocations, and translates AIX syscalls to their Linux 
-equivalents. Milicode functions (optimized library routines) are also emulated.
+equivalents.
 
 For detailed information on the internals, see the [docs/](docs/) directory 
 (WIP).
@@ -94,7 +94,7 @@ $ ./aix-user -h
 ```
 
 ## Tools
-`aix-user` includes three useful utilities for working with AIX binaries:
+`aix-user` includes three utilities for working with AIX binaries:
 
 ### aix-dump
 XCOFF file inspector that displays file headers, auxiliary headers, section 
@@ -157,20 +157,17 @@ Examples:
 small AIX tools, such as AIX "coreutils" and other similar terminal utilities. 
 Since the scope is huge and AIX has hundreds of undocumented syscalls (and 
 other features), the approach is 'binary-based': when the support for a new 
-binary is wanted, new features are brought in to support that specific binary. 
-There's simply no way to implement everything.
+binary is wanted, new features are brought in to support that specific binary.
 
-**What should work:**
-- 32-bit AIX binaries doing syscalls, environment access, and basic output
-- Dynamic library loading whether via Big-AR archives or pure XCOFF32 libraries.
-- Symbol resolution and relocations.
-- Milicode routines (strlen, memcpy, strcmp, etc.)
+**Currently tested binaries:** All binaries under [examples/], plus: `cat`,
+`dump`, `echo`, `head`, `pwd`, `tail`, `wc`.
 
-**Currently supported binaries:**
-- `args_env` - Test binary for arguments, environment variables, and exit codes
+[examples/]: examples/
 
-**In progress:**
-- AIX coreutils support (targeting `pwd` as the first utility)
+**Note:** The list is (as one might expect) non-exhaustive and certainly
+other tools might or not work as expected. It is also worth noting that
+the list above was _manually_ tested, so there might be non-tested
+edge cases too.
 
 <details><summary>Implemented Syscalls (click to expand)</summary>
 
@@ -198,6 +195,9 @@ There's simply no way to implement everything.
 | 827            | kfcntl             | Partial               |
 | 837            | __loadx            | Stub                  |
 
+**Note:** The syscall number is for informational purposes only,
+since `aix-user` does not use it to handle them.
+
 </details>
 
 AIX has hundreds of syscalls (669+ discovered so far), many of which do not 
@@ -205,10 +205,15 @@ have direct Linux equivalents and are not documented anywhere. A complete
 syscall table is available at [blog.theldus.moe/aix-user].
 
 ### Limitations
-- **No 64-bit support:** Only 32-bit XCOFF binaries are supported. XCOFF64 is 
-not implemented.
-- **Limited syscalls:** Only essential syscalls are implemented (on a demand 
-basis). Complex programs requiring advanced syscalls won't work yet!.
+`aix-user` is a simple project that doesn't intend to run *all* possible 32-bit
+AIX binaries.
+
+Considering this, the following limitations apply:
+- Limited number of syscalls (always under development)
+- No 64-bit support and there never will be.
+- No thread support (and probably never will be either: there are simply
+*too many* other things I need to address first).
+- No ctors/dtors (yet): C++ programs probably won't work yet.
 
 ## Debugging
 `aix-user` provides a built-in GDB server for debugging AIX binaries. This 

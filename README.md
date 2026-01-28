@@ -196,6 +196,7 @@ edge cases too.
 | 575            | _getppid           | Implemented           |
 | 578            | _getpid            | Implemented           |
 | 688            | vmgetinfo          | Partial               |
+| 825            | access             | Implemented           |
 | 827            | kfcntl             | Partial               |
 | 837            | __loadx            | Stub                  |
 

@@ -125,6 +125,7 @@ static struct sys_table_entry sys_table[] = {
 	{"_getpid",        aix__getpid},
 	{"_getppid",       aix__getppid},
 	{"_getpgrp",       aix__getpgrp},
+	{"access",         aix_access},
 };
 
 /**

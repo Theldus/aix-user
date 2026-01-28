@@ -160,7 +160,7 @@ other features), the approach is 'binary-based': when the support for a new
 binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `cat`,
-`dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `sed`, `tail`, `wc`.
+`cut`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `sed`, `tail`, `wc`.
 
 [examples/]: examples/
 
@@ -192,6 +192,9 @@ edge cases too.
 | 559            | __libc_sbrk        | Implemented           |
 | 560            | sbrk               | Implemented           |
 | 561            | brk                | Implemented           |
+| 574            | _getpgrp           | Implemented           |
+| 575            | _getppid           | Implemented           |
+| 578            | _getpid            | Implemented           |
 | 688            | vmgetinfo          | Partial               |
 | 827            | kfcntl             | Partial               |
 | 837            | __loadx            | Stub                  |

@@ -122,6 +122,9 @@ static struct sys_table_entry sys_table[] = {
 	{"getdirent64",    aix_getdirent64},
 	{"mntctl",         aix_mntctl},
 	{"sys_parm",       aix_sys_parm},
+	{"_getpid",        aix__getpid},
+	{"_getppid",       aix__getppid},
+	{"_getpgrp",       aix__getpgrp},
 };
 
 /**

@@ -62,6 +62,9 @@ extern int aix_lseek(uc_engine *uc);
 extern int aix_getdirent64(uc_engine *uc);
 extern int aix_mntctl(uc_engine *uc);
 extern int aix_sys_parm(uc_engine *uc);
+extern int aix__getpid(uc_engine *uc);
+extern int aix__getppid(uc_engine *uc);
+extern int aix__getpgrp(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

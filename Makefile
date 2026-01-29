@@ -39,6 +39,8 @@ OBJS += syscalls/mntctl.o
 OBJS += syscalls/sys_parm.o
 OBJS += syscalls/_getpid.o
 OBJS += syscalls/access.o
+OBJS += syscalls/unlink.o
+OBJS += syscalls/rmdir.o
 
 # Pretty print
 Q := @

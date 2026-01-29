@@ -66,6 +66,8 @@ extern int aix__getpid(uc_engine *uc);
 extern int aix__getppid(uc_engine *uc);
 extern int aix__getpgrp(uc_engine *uc);
 extern int aix_access(uc_engine *uc);
+extern int aix_unlink(uc_engine *uc);
+extern int aix_rmdir(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

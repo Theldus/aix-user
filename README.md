@@ -160,7 +160,8 @@ other features), the approach is 'binary-based': when the support for a new
 binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `cat`,
-`cut`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `sed`, `tail`, `wc`.
+`cut`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `rm`, `sed`, `tail`,
+`uniq`, `wc`.
 
 [examples/]: examples/
 
@@ -187,6 +188,8 @@ edge cases too.
 | 464            | mntctl             | Stub                  |
 | 472            | kopen              | Partial/Good enough   |
 | 480            | fstatx             | Partial               |
+| 495            | rmdir              | Implemented           |
+| 497            | unlink             | Implemented           |
 | 481            | statx              | Partial               |
 | 542            | read_sysconfig     | Stub                  |
 | 559            | __libc_sbrk        | Implemented           |

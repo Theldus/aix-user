@@ -202,6 +202,7 @@ edge cases too.
 | 825            | access             | Implemented           |
 | 827            | kfcntl             | Partial               |
 | 837            | __loadx            | Stub                  |
+| 848            | accessx            | Partial/Good enough   |
 
 **Note:** The syscall number is for informational purposes only,
 since `aix-user` does not use it to handle them.

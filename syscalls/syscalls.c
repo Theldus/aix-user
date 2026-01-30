@@ -128,6 +128,7 @@ static struct sys_table_entry sys_table[] = {
 	{"access",         aix_access},
 	{"unlink",         aix_unlink},
 	{"rmdir",          aix_rmdir},
+	{"accessx",        aix_accessx},
 };
 
 /**

@@ -11,8 +11,6 @@
 #include "unix.h"
 #include "aix_errno.h"
 
-static u32 o_errno;
-
 /**
  * @brief kfcntl syscall handler.
  *
@@ -43,38 +41,31 @@ int aix_kfcntl(uc_engine *uc)
 	u32 fd   = read_1st_arg();
 	u32 cmd  = read_2nd_arg();
 	u32 arg  = read_3rd_arg();
-	o_errno  = errno;
 	int lnx_ret = -1;
-	int ret     = -1;
+	int ret     =  0;
 
-	switch (cmd) {
-		case F_GETFL:
-			lnx_ret = fcntl(fd, cmd);
-			if (lnx_ret & O_WRONLY)
-				ret |= O_WRONLY;
-			else if (lnx_ret & O_RDWR)
-				ret |= O_RDWR;
-			break;
-
-		case F_GETFD:
-			lnx_ret = fcntl(fd, cmd);
-			break;
-
-		case F_SETFD:
-			lnx_ret = fcntl(fd, cmd, arg);
-			break;
-
-		default:
-			warn("kfcntl: unknown command: %d\n", cmd);
-			break;
+	if (cmd != F_GETFL && cmd != F_GETFD && cmd != F_SETFD) {
+		ret = -1;
+		warn("kfcntl: unknown command: %d\n", cmd);
+		goto out;
 	}
 
+	/*
+	 * Obs: the 'arg' is only evaluated if a cmd requires
+	 * a third argument.
+	 */
+	lnx_ret = fcntl(fd, cmd, arg);
 	if (lnx_ret < 0) {
+		ret = -1;
 		unix_set_conv_errno(errno);
 		goto out;
 	}
 
-	ret = 0;
+	if (cmd == F_GETFL) {
+		if      (lnx_ret & O_WRONLY) ret = O_WRONLY;
+		else if (lnx_ret & O_RDWR)   ret = O_RDWR;
+	}
+
 out:
 	TRACE("kfcntl", "%d, %d, %x", fd, cmd, arg);
 	return ret;

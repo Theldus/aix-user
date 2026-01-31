@@ -159,9 +159,12 @@ Since the scope is huge and AIX has hundreds of undocumented syscalls (and
 other features), the approach is 'binary-based': when the support for a new 
 binary is wanted, new features are brought in to support that specific binary.
 
-**Currently tested binaries:** All binaries under [examples/], plus: `cat`,
-`cut`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `rm`, `sed`, `tail`,
+**Currently tested binaries:** All binaries under [examples/], plus: `as` [^2],
+`cat`, `cut`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `rm`, `sed`, `tail`,
 `uniq`, `wc`.
+
+[^2]: aix-user still lacks the 'sigaction' syscall, but the AIX's `as` can
+work without it.
 
 [examples/]: examples/
 

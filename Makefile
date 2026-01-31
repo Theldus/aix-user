@@ -41,6 +41,7 @@ OBJS += syscalls/_getpid.o
 OBJS += syscalls/access.o
 OBJS += syscalls/unlink.o
 OBJS += syscalls/rmdir.o
+OBJS += syscalls/times.o
 
 # Pretty print
 Q := @

@@ -16,7 +16,7 @@
   	u32 trace_pc; \
   	if (args.trace_syscall) { \
   	  uc_reg_read(uc, UC_PPC_REG_LR, &trace_pc); \
-      fprintf(stderr, "TRACE (%08x) %s(", trace_pc, sys); \
+      fprintf(stderr, "TRACE (%08x) %s(", trace_pc - 4, sys); \
       fprintf(stderr, __VA_ARGS__); \
       fprintf(stderr, ") = 0x%x\n", ret); \
     } \

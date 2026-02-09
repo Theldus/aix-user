@@ -39,6 +39,30 @@ function do_test() {
 	test_num=$((test_num+1))
 }
 
+function do_test_without_out_comparison() {
+	local name="$1"     # Test name
+	shift
+	local exp_rc="$1"   # Expected return code
+	shift
+
+	printf "Test #${test_num} (${name})... ret code:"
+
+	pushd . &>/dev/null
+	cd "${CURDIR}/${name}"
+	"${ROOTDIR}/aix-user" -L "${ROOTDIR}/.libs" "${name}" "$@" > out
+	rc="$?"
+	if [ "${rc}" -ne "${exp_rc}" ]; then
+		echo "[${name}] produced wrong ret code, expected: ${exp_rc}"
+		echo "[${name}] found ${rc}!"
+		any_error=1
+		cat out
+	fi
+
+	popd &>/dev/null
+	printf "${rc}\n"
+	test_num=$((test_num+1))
+}
+
 function do_script_test() {
 	local name="$1"     # Test name
 	shift
@@ -65,6 +89,7 @@ do_test "args_env" 42 a b c d
 do_test "sbrk" 0
 do_script_test "statx" 0
 do_script_test "getdirent" 0
+do_test_without_out_comparison "time" 0 "$(date +%s)"
 
 if [ "${any_error}" -eq 1 ]; then
 	echo "One or more tests have failed!"

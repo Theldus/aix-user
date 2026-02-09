@@ -1,9 +1,11 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
+#include <time.h>
+#include <arpa/inet.h>
 #include "mm.h"
 #include "util.h"
 
@@ -17,6 +19,14 @@
 #include "memset.h"
 #include "bzero.h"
 #include "fill.h"
+#include "syscalls.h"
+
+#define GENERIC_HOOK_MILI_HDLR \
+	"\x4e\x80\x00\x20" /* blr */ \
+	"\x60\x00\x00\x00" /* nop */
+
+static void mili_read_tick(uc_engine *, u64, u32, void*);
+static void mili_muldiv64(uc_engine *, u64, u32, void*);
 
 /**
  * Milicode:
@@ -84,6 +94,106 @@ static struct milicodes {
 	{.addr = 0xfc00, MILI(strcpy)},
 };
 
+/*
+ * Hook milicode
+ * Sometimes there are kernel function calls that might be too big/expensive
+ * do to with an 'already-baked' asm (like the milicodes above). When this
+ * happen, a better stratety is to handle directly as a Unicorn hook.
+ *
+ * This happens for example at 0x11520, because I *need* to return a dynamic
+ * value, so... I'm unable to do this without a hook.
+ *
+ * Other scenario happens at 0x11570, when a kernel muldiv64 is called:
+ * this routine is pretty simple, but for 32-bit PPC this generates
+ * roughly 5kiB of code due to GCC helpers being emitted for 64-bit
+ * arithmetic.
+ */
+struct hook_milicode {
+	u32 addr;
+	void (*hndlr)(uc_engine *uc, u64 addr, u32 size, void *ud);
+} hook_milicodes[] = {
+	{.addr = 0x11520, mili_read_tick},
+	{.addr = 0x11570, mili_muldiv64},
+};
+
+/**
+ * @brief The original kernel function: "Read the current timer from HW
+ * and adds an offset (boot time?)".
+ *
+ * Here I just ignore this offset and returns the current Epoch
+ * at nanosecond scale. This works fine because previously I
+ * set the Xfreq/Xfrac to 1/1, so the timer value is exactly the
+ * time in nanoseconds, and when libc attempts to convert, it just
+ * convert back to this same value, cool isn't it?
+ */
+static void mili_read_tick(uc_engine *uc, u64 addr, u32 size, void *user_data)
+{
+	struct timespec tp;
+	u64 time_nano;
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	time_nano =  tp.tv_nsec;
+	time_nano += (u64)tp.tv_sec * 1000000000ULL;
+
+	write_gpr(5, (u32)(time_nano >> 32));
+	write_gpr(6, (u32)(time_nano));
+}
+
+/**
+ * @brief Multiply and divide with 64-bit intermediate result.
+ *
+ * Computes (value * multiplier) / divisor with 64-bit precision.
+ * Avoids overflow by splitting into quotient and remainder parts.
+ *
+ * @param value 64-bit value to multiply and divide.
+ * @param mult  32-bit multiplier.
+ * @param div   32-bit divisor.
+ *
+ * @return Result of (value * multiplier) / divisor.
+ */
+static void mili_muldiv64(uc_engine *uc, u64 addr, u32 size, void *user_data)
+{
+	u64 value = ((u64)read_1st_arg() << 32) | read_2nd_arg();
+	u32 mult  = read_3rd_arg();
+	u32 div   = read_4th_arg();
+	u64 quot  = value / div;
+	u64 rem   = value % div;
+	u64 ret   = quot * mult + (rem * mult) / div;
+	write_gpr(3, (ret >> 32) & 0xFFFFFFFF);
+	write_gpr(4, ret & 0xFFFFFFFF);
+}
+
+/**
+ * @brief Initializes the milicode hooks part: a special-case of milicodes
+ * for scenarios where a dynamic handler is better fit than an ASM.
+ *
+ * @param uc Unicorn context.
+ */
+static void milicode_hooks_init(uc_engine *uc)
+{
+	struct hook_milicode *hm;
+	uc_err  err;
+	uc_hook mili;
+
+	int i;
+	for (i = 0; i < sizeof(hook_milicodes)/sizeof(hook_milicodes[0]); i++) {
+		hm = &hook_milicodes[i];
+		MC("Hook milicode #%d at: 0x%x\n", i, hook_milicodes[i].addr);
+
+		/* Add dummy values at the expected location. */
+		err = uc_mem_write(uc, hm->addr, GENERIC_HOOK_MILI_HDLR,
+			sizeof(GENERIC_HOOK_MILI_HDLR) - 1);
+		if (err)
+			errx(1, "Unable to add generic handler at: 0x%x\n", hm->addr);
+
+		/* Add hook for the function. */
+		err = uc_hook_add(uc, &mili, UC_HOOK_CODE, hm->hndlr, NULL, hm->addr,
+			hm->addr);
+		if (err)
+			errx(1, "Failed to install HM %x, %s\n", hm->addr, uc_strerror(err));
+	}
+}
+
 /**
  * Map and write all the milicode into their expected memory regions.
  * @param uc Unicorn Engine.
@@ -107,4 +217,6 @@ void milicode_init(uc_engine *uc)
 		if (err)
 			errx(1, "Unable to map current milicode, aborting...!\n");
 	}
+
+	milicode_hooks_init(uc);
 }

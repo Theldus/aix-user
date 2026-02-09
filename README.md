@@ -160,8 +160,8 @@ other features), the approach is 'binary-based': when the support for a new
 binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `as` [^2],
-`cat`, `cut`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`, `rm`, `sed`, `tail`,
-`uniq`, `wc`.
+`cal`, `cat`, `cut`, `date`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`,
+`rm`, `sed`, `tail`, `uniq`, `wc`.
 
 [^2]: aix-user still lacks the 'sigaction' syscall, but the AIX's `as` can
 work without it.

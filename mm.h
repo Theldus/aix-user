@@ -24,9 +24,13 @@
 #define UNIX_DATA_ADDR 0x100000 /* Starts at 1MiB. */
 #define UNIX_DATA_SIZE 0x100000 /* 1MiB.           */
 
+/* Special data structures on kernel. */
+#define UNIX_SYSTEM_CONFIG    0x34e0
+#define UNIX_SYSTEM_TB_CONFIG 0x3600
+
 /* Milicode addresses. */
 #define UNIX_MILI_ADDR 0xD000
-#define UNIX_MILI_SIZE 0x3000 /* 3x 4KiB pages. */
+#define UNIX_MILI_SIZE 0x5000 /* 5x 4KiB pages. */
 
 /* XCOFF executable addresses range. */
 #define TEXT_START 0x10000000

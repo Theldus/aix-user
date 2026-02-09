@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 /*
@@ -35,6 +35,7 @@
 #include "syscalls.h"
 #include "milicode.h"
 #include "mm.h"
+#include "unix.h"
 #include "util.h"
 #include "aix_errno.h"
 
@@ -62,6 +63,10 @@ static u32 next_data_idx;
 
 /* Unicorn engine instance (initialized in syscalls_init). */
 static uc_engine *g_uc = NULL;
+
+/* Local copy of system config. */
+static struct system_config sysconfig;
+static struct system_tb_config sys_tb_config;
 
 /* errno and _environ. */
 u32 vm_errno;
@@ -115,10 +120,22 @@ u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym)
 	/* Normal data (Unclassified+RW), such as environ, errno... */
 	if (cur_sym->l_smclass & (XMC_UA|XMC_RW)) {
 		/* CHeck first for some known values. */
-		if (!strcmp(sym_name, "errno")   || !strcmp(sym_name, "_errno"))
+		if (!strcmp(sym_name, "errno")   || !strcmp(sym_name, "_errno")) {
+			UNIX("Registering (%s) at 0x%x\n", sym_name, vm_errno);
 			return vm_errno;
-		if (!strcmp(sym_name, "environ") || !strcmp(sym_name, "_environ"))
+		}
+		if (!strcmp(sym_name, "environ") || !strcmp(sym_name, "_environ")) {
+			UNIX("Registering (%s) at 0x%x\n", sym_name, vm_environ);
 			return vm_environ;
+		}
+		if (!strcmp(sym_name, "_system_configuration")) {
+			UNIX("Registering _system_configuration %x\n", UNIX_SYSTEM_CONFIG);
+			return UNIX_SYSTEM_CONFIG;
+		}
+		if (!strcmp(sym_name, "_system_TB_config")) {
+			UNIX("Registering _system_TB_config %x\n", UNIX_SYSTEM_TB_CONFIG);
+			return UNIX_SYSTEM_TB_CONFIG;
+		}
 
 		/* Generic symbol, find an spot if not already allocated. */
 		for (i = 0; i < next_data_idx; i++) {
@@ -180,6 +197,44 @@ static void registers_init(uc_engine *uc)
 
 	if ((err = uc_reg_write_batch(uc, regs_to_write, vals, 24)))
 		errx(1, "Unable to set default value regs: (%s)\n", uc_strerror(err));
+}
+
+/**
+ * Configures the system config /unix data
+ *
+ * AIX checks if system RTC is available and this is very important for all the
+ * times routines, without this, AIX's libc would not even attempt to read the
+ * Epoch value.
+ *
+ * Also, set the integer and fractional part to in the later conversions (on
+ * libc's time_base_to_time()) the Epoch is just nicely returned, i.e.,
+ *   Xint = 1 / Xfrac = 1
+ *
+ * The idea behind this is simple: AIX reads the timer frequency and stuff in
+ * order to do all the conversions needed, but since I dont have a timer, my 
+ * hook at 0x11520 will already returned the epoch time in nanoseconds, instead
+ * of ticks/cycles.
+ *	
+ * _system_tb_config only needs the flag at 0x38 to be '1', this seems to make
+ * libc to ask for the  kernel assistance in order to retrieve the timer value,
+ * which... is exactly what we want.
+ */
+void unix_init_system_config(uc_engine *uc)
+{
+	/* _system_configuration. */
+	sysconfig.xint  = htonl((s32)1);
+	sysconfig.xfrac = htonl((s32)1);
+	sysconfig.rtc   = htonl((s32)RTC_POWER_PC);
+	if (uc_mem_write(uc, UNIX_SYSTEM_CONFIG, &sysconfig, sizeof sysconfig))
+		errx(1, "Unable to write into _system_configuration!\n");
+
+	/* _system_tb_config */
+	sys_tb_config.tb_ns_per_tic.kernel_help = htonl((s32)1);
+	if (uc_mem_write(uc, UNIX_SYSTEM_TB_CONFIG, &sys_tb_config, sizeof sys_tb_config))
+		errx(1, "Unable to write into _system_TB_config!\n");
+
+	UNIX("_system_configuration/tb configured! (0x%x - 0x%x)\n",
+		UNIX_SYSTEM_CONFIG, UNIX_SYSTEM_TB_CONFIG);
 }
 
 /**

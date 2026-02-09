@@ -142,6 +142,8 @@ int main(int argc, char **argv, char **envp)
 	if (!lcoff)
 		return -1;
 
+	unix_init_system_config(uc);
+
 	/* Init GDB stub (if requested). */
 	if (args.enable_gdb) {
 		if (gdb_init(uc, args.gdb_port) < 0)

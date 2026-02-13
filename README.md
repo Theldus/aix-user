@@ -159,9 +159,9 @@ Since the scope is huge and AIX has hundreds of undocumented syscalls (and
 other features), the approach is 'binary-based': when the support for a new 
 binary is wanted, new features are brought in to support that specific binary.
 
-**Currently tested binaries:** All binaries under [examples/], plus: `as` [^2],
-`cal`, `cat`, `cut`, `date`, `dump`, `echo`, `grep`, `head`, `printf`, `pwd`,
-`rm`, `sed`, `tail`, `uniq`, `wc`.
+**Currently tested binaries:** All binaries under [examples/], plus: `ar`,
+`as` [^2], `cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
+`printf`, `pwd`, `rm`, `sed`, `tail`, `uniq`, `wc`.
 
 [^2]: aix-user still lacks the 'sigaction' syscall, but the AIX's `as` can
 work without it.
@@ -193,6 +193,7 @@ edge cases too.
 | 464            | mntctl             | Stub                  |
 | 472            | kopen              | Partial/Good enough   |
 | 480            | fstatx             | Partial               |
+| 489            | umask              | Implemented           |
 | 495            | rmdir              | Implemented           |
 | 497            | unlink             | Implemented           |
 | 481            | statx              | Partial               |

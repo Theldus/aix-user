@@ -43,6 +43,8 @@ OBJS += syscalls/unlink.o
 OBJS += syscalls/rmdir.o
 OBJS += syscalls/times.o
 OBJS += syscalls/appgetrlimit.o
+OBJS += syscalls/chmod.o
+OBJS += syscalls/umask.o
 
 # Pretty print
 Q := @

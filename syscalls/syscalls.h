@@ -70,6 +70,8 @@ extern int aix_unlink(uc_engine *uc);
 extern int aix_rmdir(uc_engine *uc);
 extern int aix_accessx(uc_engine *uc);
 extern int aix_times(uc_engine *uc);
+extern int aix_appgetrlimit(uc_engine *uc);
+extern int aix_getrlimit64(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

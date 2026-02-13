@@ -130,6 +130,8 @@ static struct sys_table_entry sys_table[] = {
 	{"rmdir",          aix_rmdir},
 	{"accessx",        aix_accessx},
 	{"times",          aix_times},
+	{"appgetrlimit",   aix_appgetrlimit},
+	{"getrlimit64",    aix_getrlimit64},
 };
 
 /**

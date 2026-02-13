@@ -42,6 +42,7 @@ OBJS += syscalls/access.o
 OBJS += syscalls/unlink.o
 OBJS += syscalls/rmdir.o
 OBJS += syscalls/times.o
+OBJS += syscalls/appgetrlimit.o
 
 # Pretty print
 Q := @

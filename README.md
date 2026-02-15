@@ -188,6 +188,7 @@ edge cases too.
 | 399            | klseek             | Implemented           |
 | 401            | lseek              | Implemented           |
 | 411            | sys_parm           | Partial               |
+| 418            | chown              | Implemented           |
 | 451            | getdirent64        | Implemented           |
 | 454            | kioctl             | Partial               |
 | 464            | mntctl             | Stub                  |

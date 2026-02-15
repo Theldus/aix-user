@@ -45,6 +45,7 @@ OBJS += syscalls/times.o
 OBJS += syscalls/appgetrlimit.o
 OBJS += syscalls/chmod.o
 OBJS += syscalls/umask.o
+OBJS += syscalls/chown.o
 
 # Pretty print
 Q := @

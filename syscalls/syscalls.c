@@ -134,6 +134,7 @@ static struct sys_table_entry sys_table[] = {
 	{"getrlimit64",    aix_getrlimit64},
 	{"chmod",          aix_chmod},
 	{"umask",          aix_umask},
+	{"chown",          aix_chown},
 };
 
 /**

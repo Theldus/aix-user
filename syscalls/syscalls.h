@@ -74,6 +74,7 @@ extern int aix_appgetrlimit(uc_engine *uc);
 extern int aix_getrlimit64(uc_engine *uc);
 extern int aix_chmod(uc_engine *uc);
 extern int aix_umask(uc_engine *uc);
+extern int aix_chown(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
 

@@ -160,15 +160,22 @@ other features), the approach is 'binary-based': when the support for a new
 binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `ar`,
-`as` [^2], `cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
-`printf`, `pwd`, `rm`, `sed`, `tail`, `uniq`, `wc`.
+`cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
+`printf`, `pwd`, `rm`, `sed`, `tail`, `uname`, `uniq`, `wc`.
 
-[^2]: aix-user still lacks the 'sigaction' syscall, but the AIX's `as` can
-work without it.
+**Binaries that works, but with possible caveats**: The list below contains
+binaries that works but might have some hidden issues due to features
+not-implemented, and etc:
+
+| Binary      | Reason                                                     |
+|:-----------:|:----------------------------------------------------------:|
+| as          | `_sigaction` not-implemented yet                           |
+| find        | `_sigaction`, `execve` and `kfork` not-implemented yet     |
+| sort        | `_sigaction` not-implemented yet                           |
 
 [examples/]: examples/
 
-**Note:** The list is (as one might expect) non-exhaustive and certainly
+**Note:** These lists is (as one might expect) non-exhaustive and certainly
 other tools might or not work as expected. It is also worth noting that
 the list above was _manually_ tested, so there might be non-tested
 edge cases too.
@@ -197,6 +204,8 @@ edge cases too.
 | 472            | kopen              | Partial/Good enough   |
 | 480            | fstatx             | Partial               |
 | 489            | umask              | Implemented           |
+| 493            | unamex             | Implemented           |
+| 494            | uname              | Implemented           |
 | 495            | rmdir              | Implemented           |
 | 497            | unlink             | Implemented           |
 | 481            | statx              | Partial               |

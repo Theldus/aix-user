@@ -137,6 +137,8 @@ static struct sys_table_entry sys_table[] = {
 	{"chown",          aix_chown},
 	{"chdir",          aix_chdir},
 	{"fchdir",         aix_fchdir},
+	{"uname",          aix_uname},
+	{"unamex",         aix_unamex},
 };
 
 /**

@@ -135,6 +135,8 @@ static struct sys_table_entry sys_table[] = {
 	{"chmod",          aix_chmod},
 	{"umask",          aix_umask},
 	{"chown",          aix_chown},
+	{"chdir",          aix_chdir},
+	{"fchdir",         aix_fchdir},
 };
 
 /**

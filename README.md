@@ -161,7 +161,8 @@ binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `ar`,
 `cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
-`kill`, `printf`, `pwd`, `rm`, `sed`, `tail`, `uname`, `uniq`, `wc`.
+`kill`, `od`, `printf`, `pwd`, `rm`, `sed`, `tail`, `tee`, `test`, `tr`, `uname`,
+`uniq`, `wc`, `yes`.
 
 **Binaries that works, but with possible caveats**: The list below contains
 binaries that works but might have some hidden issues due to features

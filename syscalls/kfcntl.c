@@ -11,6 +11,8 @@
 #include "unix.h"
 #include "aix_errno.h"
 
+#define AIX_F_DUP2FD 14 /* Equivalent to dup2(2), AIX-only. */
+
 /**
  * @brief kfcntl syscall handler.
  *
@@ -27,43 +29,49 @@
  *    - F_GETFL: Return the fd status and access modes.
  *    - F_GETFD: Get flags associated with FD (FD_CLOEXEC if set).
  *    - F_SETFD: Set flags to the FD (FD_CLOEXEC).
+ *    - F_DUPFD: Dup the provided fd
  *
  * !!Note:!! The flags handled here have the exact same values on Linux
  * and AIX so thats why I am not translating them. For *any* new flags,
  * please make sure they are compatible between systems.
  *
  * Compatible constants:
- *   F_GETFL, F_GETFD, F_SETFD, FD_CLOEXEC, O_WRONLY, O_RDWR
+ *   F_DUPFD, F_GETFL, F_GETFD, F_SETFD, FD_CLOEXEC, O_WRONLY, O_RDWR
+ *   AIX_F_DUP2FD is AIX-only
+ *
+ * In meantime, there is no dup(2) and dup2(2) syscalls on AIX!,
+ * these are only handled by fcntl.
  */
 int aix_kfcntl(uc_engine *uc)
 {
 	((void)uc);
-	u32 fd   = read_1st_arg();
-	u32 cmd  = read_2nd_arg();
-	u32 arg  = read_3rd_arg();
-	int lnx_ret = -1;
-	int ret     =  0;
+	u32 fd  = read_1st_arg();
+	u32 cmd = read_2nd_arg();
+	u32 arg = read_3rd_arg();
+	int ret = -1;
 
-	if (cmd != F_GETFL && cmd != F_GETFD && cmd != F_SETFD) {
-		ret = -1;
+	/* Call proper functions. */
+	switch (cmd) {
+	/*
+	 * Obs: the 'arg' is only evaluated by fcntl() if a cmd
+	 * requires a third argument.
+	 */
+	case F_DUPFD:
+	case F_GETFL:
+	case F_GETFD:
+	case F_SETFD:      ret = fcntl(fd, cmd, arg); break;
+	case AIX_F_DUP2FD: ret = dup2(fd, arg);       break;
+	default:
 		warn("kfcntl: unknown command: %d\n", cmd);
 		goto out;
 	}
 
-	/*
-	 * Obs: the 'arg' is only evaluated if a cmd requires
-	 * a third argument.
-	 */
-	lnx_ret = fcntl(fd, cmd, arg);
-	if (lnx_ret < 0) {
-		ret = -1;
+	/* Check for errors/handle F_GETFL. */
+	if (ret < 0)
 		unix_set_conv_errno(errno);
-		goto out;
-	}
-
-	if (cmd == F_GETFL) {
-		if      (lnx_ret & O_WRONLY) ret = O_WRONLY;
-		else if (lnx_ret & O_RDWR)   ret = O_RDWR;
+	else if (cmd == F_GETFL) {
+		if      (ret & O_WRONLY) ret = O_WRONLY;
+		else if (ret & O_RDWR)   ret = O_RDWR;
 	}
 
 out:

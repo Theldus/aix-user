@@ -48,6 +48,7 @@ OBJS += syscalls/umask.o
 OBJS += syscalls/chown.o
 OBJS += syscalls/chdir.o
 OBJS += syscalls/uname.o
+OBJS += syscalls/kill.o
 
 # Pretty print
 Q := @

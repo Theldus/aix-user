@@ -161,7 +161,7 @@ binary is wanted, new features are brought in to support that specific binary.
 
 **Currently tested binaries:** All binaries under [examples/], plus: `ar`,
 `cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
-`printf`, `pwd`, `rm`, `sed`, `tail`, `uname`, `uniq`, `wc`.
+`kill`, `printf`, `pwd`, `rm`, `sed`, `tail`, `uname`, `uniq`, `wc`.
 
 **Binaries that works, but with possible caveats**: The list below contains
 binaries that works but might have some hidden issues due to features
@@ -187,6 +187,7 @@ edge cases too.
 | 5              | close              | Implemented           |
 | 7              | kread              | Implemented           |
 | 10             | kwrite             | Implemented           |
+| 107            | kill               | Implemented           |
 | 112            | getuidx            | Implemented           |
 | 113            | getgidx            | Implemented           |
 | 149            | _exit              | Implemented           |

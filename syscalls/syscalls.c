@@ -139,6 +139,7 @@ static struct sys_table_entry sys_table[] = {
 	{"fchdir",         aix_fchdir},
 	{"uname",          aix_uname},
 	{"unamex",         aix_unamex},
+	{"kill",           aix_kill},
 };
 
 /**

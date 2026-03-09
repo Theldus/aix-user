@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unicorn/unicorn.h>
 
@@ -873,7 +874,8 @@ void handle_gdb_msg(uc_engine *uc, uint32_t addr, uint32_t size, int *cont)
 static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 	void *user_data)
 {
-	int cont = 0;
+	int cont    = 0;
+	int nodelay = 1;
 	((void)user_data);
 
 	/* If not in single-step or if PC do not matches a previous
@@ -891,6 +893,8 @@ static void single_step(uc_engine *uc, uint32_t addr, uint32_t size,
 			cl_fd = accept(sv_fd, NULL, NULL);
 			if (cl_fd < 0)
 				errx(1, "Failed to accept client connection!\n");
+			setsockopt(cl_fd, IPPROTO_TCP, TCP_NODELAY,
+				&nodelay, sizeof(nodelay));
 		}
 		else {
 			handle_gdb_msg(uc, addr, size, &cont);

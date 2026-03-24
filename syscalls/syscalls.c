@@ -352,12 +352,6 @@ void syscalls_init(uc_engine *uc)
 	next_syscall_idx = 0;
 	next_desc_addr   = UNIX_DESC_ADDR;
 
-	/* Map the syscall entry point page. */
-	err = uc_mem_map(uc, 0x3000, 4096, UC_PROT_ALL);
-	if (err)
-		errx(1, "Failed to map syscall entry page: %s\n",
-		     uc_strerror(err));
-
 	/* Write the syscall stub code at 0x3700. */
 	err = uc_mem_write(uc, SYSCALL_ADDR, SYSCALL_HDLR,
 	                   sizeof(SYSCALL_HDLR) - 1);

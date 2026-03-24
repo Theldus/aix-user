@@ -21,6 +21,7 @@ struct args args = {
 	.lib_path      = ".",
 	.trace_syscall = 0,
 	.trace_loader  = 0,
+	.trace_memory  = 0,
 	.gdb_port      = 1234,
 	.enable_gdb    = 0,
 };
@@ -44,6 +45,7 @@ static void usage(const char *prgname)
 		"  -L <path> Set library search path (default: current directory)\n"
 		"  -s        Enable syscall trace\n"
 		"  -l        Enable loader/binder/milicode/syscall trace\n"
+		"  -m        Enable memory subsystem trace\n"
 		"  -d        Enable GDB server\n"
 		"  -g <port> GDB server port (default: 1234)\n"
 		"  -h        Show this help\n\n"
@@ -70,7 +72,7 @@ static void parse_args(int *argc, char ***argv)
 	char **orig_argv = *argv;
 
 	/* Parse options. */
-	while ((c = getopt(*argc, *argv, "+hL:slg:d")) != -1)
+	while ((c = getopt(*argc, *argv, "+hL:slmg:d")) != -1)
 	{
 		switch (c) {
 		case 'h':
@@ -84,6 +86,9 @@ static void parse_args(int *argc, char ***argv)
 			break;
 		case 'l':
 			args.trace_loader = 1;
+			break;
+		case 'm':
+			args.trace_memory = 1;
 			break;
 		case 'g':
 			args.gdb_port = atoi(optarg);
@@ -153,11 +158,8 @@ int main(int argc, char **argv, char **envp)
 	entry_point = xcoff_get_entrypoint(&lcoff->xcoff);
 	err = uc_emu_start(uc, entry_point, (1ULL<<48), 0, 0);
 	if (err) {
-		printf("FAILED with error: %s\n", uc_strerror(err));
-		if (err == UC_ERR_EXCEPTION) {
-			printf("  -> Exception occurred\n");
-			register_dump(uc);
-		}
+		fprintf(stderr, "FAILED with error: %s\n", uc_strerror(err));
+		register_dump(uc);
 		return 1;
 	}
 	return 0;

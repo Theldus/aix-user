@@ -10,20 +10,20 @@
 [TEST] Write to sbrk-allocated memory
   [+] Result: PASS
 
-[TEST] sbrk(-2048) - shrink heap
-  Old: 0x40001000, New: 0x40000800
+[TEST] sbrk(-4096) - shrink heap
+  Old: 0x40001000, New: 0x40000000
   [+] Result: PASS
 
 [TEST] brk() - set absolute break address
-  Set break to: 0x40002800
+  Set break to: 0x40002000
   [+] Result: PASS
 
 [TEST] Large allocation (16MB)
-  Allocated 16MB at 0x40002800
+  Allocated 16MB at 0x40002000
   [+] Result: PASS
 
 [TEST] malloc integration test
-  malloc'ed: 0x41002808 0x41102818 0x41302828 0x41702838
+  malloc'ed: 0x41002008 0x41113008 0x41324008 0x41735008
   [+] Result: PASS
 
 [TEST] brk(0x1000) - invalid address (should fail)

@@ -14,6 +14,7 @@ struct args {
 	const char *lib_path;     /* -L: library search path  */
 	int trace_syscall;        /* -s: enable syscall trace */
 	int trace_loader;         /* -l: enable loader/binder trace */
+	int trace_memory;         /* -m: enable memory subsys trace */
 	int gdb_port;             /* -g: GDB server port      */
 	int enable_gdb;           /* -d: enable GDB server    */
 };

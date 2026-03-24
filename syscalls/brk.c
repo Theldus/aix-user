@@ -6,13 +6,23 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/mman.h>
+
 #include "syscalls.h"
 #include "unix.h"
 #include "mm.h"
 #include "aix_errno.h"
 
 static int silence_trace;
-static u32 curr_brk = HEAP_ADDR;
+
+/**
+ * curr_brk = Current VMs virtual address break address.
+  * Obs:
+ * 'heap_host' holds the base address (host) for the heap region.
+ * 'curr_heap' = Current host address break memory.
+ */
+static u32 vcurr_brk  = HEAP_ADDR;
+static u32 vcurr_size = 0;  /* Nothing mapped in Unicorn until first sbrk. */
 
 /**
  * @brief brk syscall handler.
@@ -27,17 +37,25 @@ int aix_brk(uc_engine *uc)
 {
 	((void)uc);
 	u32 addr = read_1st_arg();
-	int ret  = -1;
+	s32 delta;
+	int ret;
 
-	/* Wrong address. */
+	ret = -1;
 	if (addr < HEAP_ADDR) {
 		unix_set_errno(AIX_ENOMEM);
-		ret = -1;
 		goto out;
 	}
 
-	curr_brk = addr;
-	ret = 0;
+	delta = (s32)(addr - vcurr_brk);
+	write_gpr(3, delta);
+	silence_trace = 1;
+		ret = aix_sbrk(uc);
+	silence_trace = 0;
+
+	/* brk returns 0 on success, not the old break. */
+	if (ret != -1)
+		ret = 0;
+
 out:
 	TRACE("brk", "0x%x", addr);
 	return ret;
@@ -48,35 +66,91 @@ out:
  *
  * AIX calling convention:
  *   r3 = increment value
- *
+ * 
+ *   The heap is reserved at init via mmap(PROT_NONE) but not mapped
+ *   into Unicorn. On each sbrk call, host pages are enabled/disabled
+ *   via mprotect, and the entire used portion is unmapped/remapped
+ *   in Unicorn so that out-of-bounds accesses correctly fault.
+ * 
  * Return value (in r3):
- *   On success, returns the previous break value (if increased).
- *   On error, -1 with errno set to ENOMEM
+ *   On success, returns the previous break value.
+ *   On error, -1 with errno set to ENOMEM.
  */
 int aix_sbrk(uc_engine *uc)
 {
 	((void)uc);
 	s32 incr = read_1st_arg();
-	u32 decr;
-	int ret  = (int)curr_brk;
+	int ret  = (int)vcurr_brk;
+	uc_err uerr;
+	u32 new_size;
 
-	if (incr >= 0) {
-		if (curr_brk > UINT32_MAX - (u32)incr) {
+	if (incr > 0) {
+		incr = ALIGN_UP(incr);
+
+		if (vcurr_brk > UINT32_MAX - (u32)incr) {
 			unix_set_errno(AIX_ENOMEM);
 			ret = -1;
 			goto out;
 		}
-		curr_brk += (u32)incr;
+
+		/* Enable pages on the host side. */
+		if (mprotect(curr_heap, incr, PROT_READ|PROT_WRITE) < 0) {
+			unix_set_errno(AIX_ENOMEM);
+			ret = -1;
+			goto out;
+		}
+
+		/* Unmap old heap region (skip on first call). */
+		if (vcurr_size > 0) {
+			if ((uerr = uc_mem_unmap(uc, HEAP_ADDR, vcurr_size)))
+				errx(1, "Failed while unmapping heap region\n");
+		}
+
+		/* Map the entire used portion into Unicorn. */
+		new_size = (vcurr_brk - HEAP_ADDR) + incr;
+		uerr = uc_mem_map_ptr(uc, HEAP_ADDR, new_size,
+			UC_PROT_READ|UC_PROT_WRITE, heap_host);
+		if (uerr)
+			errx(1, "Failed to remap heap into VM\n");
+
+		curr_heap  += incr;
+		vcurr_brk  += incr;
+		vcurr_size  = new_size;
+
 	}
 
-	else {
-		decr = (u32)(-incr);
-		if (curr_brk < decr || (curr_brk-decr) < HEAP_ADDR) {
+	else if (incr < 0) {
+		u32 decr = ALIGN_UP((u32)(-incr));
+
+		/* Can't shrink below heap base. */
+		if (vcurr_brk - HEAP_ADDR < decr) {
 			unix_set_errno(AIX_ENOMEM);
 			ret = -1;
 			goto out;
 		}
-		curr_brk -= decr;
+
+		/* Unmap old heap region in Unicorn. */
+		if (vcurr_size > 0) {
+			if ((uerr = uc_mem_unmap(uc, HEAP_ADDR, vcurr_size)))
+				errx(1, "Failed while unmapping heap region\n");
+		}
+
+		curr_heap  -= decr;
+		vcurr_brk  -= decr;
+		new_size    = vcurr_brk - HEAP_ADDR;
+
+		/* Release physical pages on host side. */
+		mprotect(curr_heap, decr, PROT_NONE);
+
+		/* Remap the remaining used portion (if any). */
+		if (new_size > 0) {
+			uerr = uc_mem_map_ptr(uc, HEAP_ADDR, new_size,
+				UC_PROT_READ|UC_PROT_WRITE, heap_host);
+			if (uerr)
+				errx(1, "Failed to remap heap into VM\n");
+		}
+
+		vcurr_size = new_size;
 	}
 
 out:
@@ -112,7 +186,7 @@ out:
  *	  7fd0b4:   7c 03 23 78     or      r3,r0,r4
  *	  7fd0b8:   48 00 00 48     b       7fd100 <.__sbrk>
  *	  7fd0bc:   48 00 00 44     b       7fd100 <.__sbrk>
- *  
+ *
  * AIX calling convention:
  *   r3 = increment value (high-portion, usually 0)
  *   r4 = increment value (low-portion)

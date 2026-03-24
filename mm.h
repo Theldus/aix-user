@@ -52,29 +52,18 @@
 
 /* Forward declarations. */
 struct loaded_coff;
+extern char *heap_host;
+extern char *curr_heap;
 
 /* Initialize memory manager with Unicorn instance. */
 void mm_init(uc_engine *uc);
 
-/* Allocate memory for main executable. */
-void mm_alloc_main_exec_memory(
+/* Allocate memory for a COFF object (executable or library). */
+void mm_alloc_coff_memory(
 	u32 text_vaddr, u32 text_size,
 	u32 data_vaddr, u32 data_size,
 	u32 bss_vaddr,  u32 bss_size,
-	struct loaded_coff *lcoff);
-
-/* Allocate memory for library. */
-int mm_alloc_library_memory(
-	u32 text_vaddr, u32 text_size,
-	u32 data_vaddr, u32 data_size,
-	u32 bss_vaddr,  u32 bss_size,
-	struct loaded_coff *lcoff);
-
-/* Write .text section to allocated memory. */
-void mm_write_text(struct loaded_coff *lcoff, int is_exe);
-
-/* Write .data section to allocated memory. */
-void mm_write_data(struct loaded_coff *lcoff, int is_exe);
+	struct loaded_coff *lcoff, int is_exe);
 
 /* Read/write an u32 value for/to a given address. */
 u32 mm_read_u32(u32 vaddr, int *err);

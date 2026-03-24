@@ -464,19 +464,11 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 	 * Alloc the memory for .text, .data and .bss if the main exec
 	 * or library. The distinction is due to...
 	 */
-	if (is_exe) {
-		mm_alloc_main_exec_memory(
-			aux->o_text_start, aux->o_tsize,
-			aux->o_data_start, aux->o_dsize,
-			sec->s_vaddr,      sec->s_size,
-			lcoff);
-	} else {
-		mm_alloc_library_memory(
-			aux->o_text_start, aux->o_tsize,
-			aux->o_data_start, aux->o_dsize,
-			sec->s_vaddr,      sec->s_size,
-			lcoff);
-	}
+	mm_alloc_coff_memory(
+		aux->o_text_start, aux->o_tsize,
+		aux->o_data_start, aux->o_dsize,
+		sec->s_vaddr,      sec->s_size,
+		lcoff, is_exe);
 
 	LOADER("Allocated: .text=0x%x .data=0x%x .bss=0x%x\n",
 		lcoff->text_start, lcoff->data_start, lcoff->bss_start);
@@ -487,8 +479,6 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 		uc_reg_write(uc, UC_PPC_REG_2, &lcoff->toc_anchor);
 
 	push_coff(lcoff);
-	mm_write_text(lcoff, is_exe);
-	mm_write_data(lcoff, is_exe);
 
 	/* Fix relocs. */
 	process_relocations(uc, lcoff);

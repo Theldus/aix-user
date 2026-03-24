@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #include <sys/mman.h>
@@ -19,10 +19,212 @@
 #include "loader.h"
 #include "unix.h"
 
+/**
+ * Debug logging macro for the memory subsystem.
+ */
+#define MM(...) \
+	do { \
+		if (args.trace_memory) \
+		  fprintf(stderr, "[mm] " __VA_ARGS__); \
+	} while (0)
+
 /* Memory Management. */
 static uc_engine *g_uc = NULL;
 static u32 next_text_base = TEXT_START + EXEC_TEXT_SIZE;
 static u32 next_data_base = DATA_START + EXEC_DATA_SIZE;
+
+/**
+ * heap_host = Base address for the heap (on host)
+ * curr_heap = Current address for the heap (on host)
+ */
+char *heap_host;
+char *curr_heap;
+
+/* Region definition structure
+ *
+ * Each 'portion' of memory will be allocated as a 'region', this way,
+ * aix-user can easily track all the memory layout and relationship
+ * between the host/vm memory.
+ */
+#define MM_REGIONS 32
+static struct mm_region {
+	const char *description;
+	const u8 *host_base;
+	u32 vm_base;
+	u32 prot;
+	u32 size;
+} regions [MM_REGIONS];
+
+static int region_idx;
+
+/**
+ * @brief Given a Unicorn's memory permission, map into rwx.
+ * @param prot Unicorn's permission.
+ * @return Returns a string containing rwx, depending in the permission
+ *         level provided.
+ */
+static const char *format_perms(u32 prot) {
+	static char buff[4];
+	memcpy(buff, "---", 3);
+	if (prot & UC_PROT_READ)  buff[0] = 'r';
+	if (prot & UC_PROT_WRITE) buff[1] = 'w';
+	if (prot & UC_PROT_EXEC)  buff[2] = 'x';
+	return buff;	
+}
+
+/**
+ * @brief Formats a 4-byte unsigned size into KiB/MiB/GiB string.
+ * @param size Size to be formatted.
+ * @return Returns a string with the formatted size.
+ */
+static const char *format_size(u32 size) {
+	static char str[16] = {0};
+	if (size < 1024*1024)
+		snprintf(str, sizeof str, "%3u KiB", size/1024);
+	else if (size < 1024*1024*1024ULL)
+		snprintf(str, sizeof str, "%3u MiB", size/(1024*1024));
+	else
+		snprintf(str, sizeof str, "%3llu GiB", size/(1024*1024*1024ULL));
+	return str;
+}
+
+/**
+ * @brief Allocates a memory region in the VM accordingly with the provided
+ * parameters.
+ * @param vm_base   Base address that will be mapped into the VM.
+ * @param size      Region size to be mapped.
+ * @param host_base Host backing memory to be mapped into the VM. If NULL, a
+ *                  new memory will be allocated.
+ * @param prot      Unicorn's permission level. If 0, the region wont be mapped
+ *                  into Unicorn.
+ * @param desc      String description of the to-be mapped memory region.
+ */
+static void mm_alloc_region(u32 vm_base, u32 size, const void *host_base, u32 prot,
+	const char *desc)
+{
+	uc_err err;
+
+	if (region_idx >= MM_REGIONS)
+		errx(1, "Unable to allocate region: %x/%d!\n", vm_base, size);
+	if (!size)
+		errx(1, "Invalid size for a region!\n");
+
+	if (!host_base) {
+		host_base = calloc(1, size);
+		if (!host_base)
+			errx(1, "Unable to allocate memory for region, size: %u\n", size);
+	}
+
+	regions[region_idx].vm_base     = vm_base;
+	regions[region_idx].size        = size;
+	regions[region_idx].prot        = prot;
+	regions[region_idx].host_base   = host_base;
+	regions[region_idx].description = desc;
+	region_idx++;
+
+	MM("Map: 0x%08x 0x%016" PRIxPTR" %s %s (%s)\n",
+		vm_base, (uintptr_t)host_base, format_size(size), format_perms(prot),
+		desc);
+
+	/* If prot == UC_PROT_NONE (0): register in table only, don't map into
+	 * Unicorn yet (used for heap: sbrk maps on first call). */
+	if (prot) {
+		err = uc_mem_map_ptr(g_uc, vm_base, size, prot, (void*)host_base);
+		if (err)
+			errx(1, "Unable to map_ptr region: reason: (%s)\n",
+				uc_strerror(err));
+	}
+}
+
+/**
+ * @brief Allocates a section region (.text or .data/.bss).
+ *
+ * @param lcoff     Loaded COFF structure with parsed XCOFF data.
+ * @param sec_num   Section number (1-based, from aux header).
+ * @param vaddr     Runtime virtual address for this section.
+ * @param end_vaddr End virtual address (e.g., vaddr+tsize or vbss+bsize).
+ * @param copy_size Number of bytes to copy from the XCOFF file.
+ * @param bump      Pointer to the bump allocator to update.
+ * @param desc      Region description for debugging.
+ */
+static void mm_alloc_section_region(struct loaded_coff *lcoff,
+	u16 sec_num, u32 vaddr, u32 end_vaddr, u32 copy_size,
+	u32 *bump, u32 prot, const char *desc)
+{
+	struct xcoff_sec_hdr32 *sec;
+	const void *sec_buff;
+	void *new_buff;
+	u32 aligned;
+	u32 end;
+	u32 size;
+
+	if (sec_num == 0 || sec_num > lcoff->xcoff.hdr.f_nscns)
+		errx(1, "Invalid %s section number!\n", desc);
+
+	sec      = &lcoff->xcoff.secs[sec_num - 1];
+	sec_buff = lcoff->xcoff.buff + sec->s_scnptr;
+
+	aligned  = vaddr & ~(PAGE_SIZE - 1);
+	end      = ALIGN_UP(end_vaddr);
+	size     = end - aligned;
+	new_buff = calloc(1, size);
+	if (!new_buff)
+		errx(1, "Unable to allocate memory for %s region!\n", desc);
+
+	memcpy(new_buff + (vaddr - aligned), sec_buff, copy_size);
+	mm_alloc_region(aligned, size, new_buff, prot, desc);
+	*bump += size;
+}
+
+/**
+ * @brief Initialize the VM's heap memory with the addresses
+ * and size previously configured.
+ *
+ * @return Always 0.
+ */
+static int mm_init_heap(void) {
+	heap_host = mmap(NULL, HEAP_SIZE, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	if (heap_host == MAP_FAILED)
+		errx(1, "Unable to allocate heap memory, aborting...\n");
+
+	curr_heap = heap_host;
+
+	/* Register in region table but don't map into Unicorn yet:
+	 * sbrk will map the used portion on first call. */
+	mm_alloc_region(HEAP_ADDR, HEAP_SIZE, heap_host,
+		UC_PROT_NONE, "heap");
+	return 0;
+}
+
+/**
+ * @brief Initializes the VM memory region.
+ */
+static void mm_regions_init(void)
+{
+	/* Kernel regions (< 256MiB): 1:1 mapping with AIX 7.2 TL04 SP2.
+	 * I could map all the interval between 0-256MiB, but doing so I'd
+	 * skip all possible invalid read, since the memory is already mapped.
+	 */
+	mm_alloc_region(0,      4096, NULL,
+		UC_PROT_READ, "page 0");
+	mm_alloc_region(0x3000, 4096, NULL,
+		UC_PROT_READ|UC_PROT_EXEC, "syscall");
+	mm_alloc_region(UNIX_MILI_ADDR, UNIX_MILI_SIZE, NULL,
+		UC_PROT_READ|UC_PROT_EXEC, "milicode");
+
+	/* /unix data (not 1:1 with the kernel). */
+	mm_alloc_region(UNIX_DESC_ADDR, UNIX_DESC_SIZE, NULL,
+		UC_PROT_READ, "unix desc");
+	mm_alloc_region(UNIX_DATA_ADDR, UNIX_DATA_SIZE, NULL,
+		UC_PROT_READ, "unix data");
+
+	/* User regions. */
+	mm_alloc_region(STACK_ADDR-STACK_SIZE, STACK_SIZE, NULL,
+		UC_PROT_READ|UC_PROT_WRITE, "stack");
+
+	/* Heap region. */
+	mm_init_heap();
+}
 
 /**
  * @brief Safe addition with overflow checking.
@@ -61,25 +263,6 @@ static void validate_data_bss_layout(u32 data_vaddr, u32 data_size,
 }
 
 /**
- * @brief Zero-initialize .bss section.
- *
- * @param bss_addr .bss runtime address.
- * @param bss_size .bss size.
- */
-static void write_zero_bss(u32 bss_addr, u32 bss_size)
-{
-	char *bss;
-	if (!bss_size)
-		return;
-	bss = calloc(1, bss_size);
-	if (!bss)
-		errx(1, "Unable to allocate memory for .bss!\n");
-	if (uc_mem_write(g_uc, bss_addr, bss, bss_size))
-		errx(1, "Unable to write to .bss section at 0x%x!\n", bss_addr);
-	free(bss);
-}
-
-/**
  * @brief Generic memory allocation function.
  * Validates, maps, and finalizes memory regions.
  *
@@ -99,11 +282,12 @@ static void write_zero_bss(u32 bss_addr, u32 bss_size)
 static void mm_alloc_memory(
 	u32 text_runtime, u32 text_map_size, u32 text_limit,
 	u32 data_runtime, u32 data_map_size, u32 data_limit,
-	u32 bss_runtime, u32 bss_size,
-	u32 text_delta, u32 data_delta, u32 bss_delta,
-	struct loaded_coff *lcoff)
+	u32 bss_runtime,  u32 bss_size,
+	u32 text_delta,   u32 data_delta, u32 bss_delta,
+	struct loaded_coff *lcoff, int is_exe)
 {
 	u32 end;
+	struct xcoff_aux_hdr32 *aux = &lcoff->xcoff.aux;
 
 	/* Validate .text region fits within limit. */
 	if (safe_add_u32(text_runtime, text_map_size, &end))
@@ -119,17 +303,6 @@ static void mm_alloc_memory(
 		errx(1, "Data region exceeds limit (0x%x > 0x%x)!\n",
 			end, data_limit);
 
-	/* Map .text region. */
-	if (uc_mem_map(g_uc, text_runtime, text_map_size, UC_PROT_ALL))
-		errx(1, "Unable to map .text at 0x%x!\n", text_runtime);
-
-	/* Map .data+.bss region. */
-	if (uc_mem_map(g_uc, data_runtime, data_map_size, UC_PROT_ALL))
-		errx(1, "Unable to map .data+.bss at 0x%x!\n", data_runtime);
-
-	/* Zero-initialize .bss. */
-	write_zero_bss(bss_runtime, bss_size);
-
 	/* Fill loaded_coff structure. */
 	lcoff->text_start = text_runtime;
 	lcoff->data_start = data_runtime;
@@ -138,11 +311,30 @@ static void mm_alloc_memory(
 	lcoff->deltas[TEXT_DELTA] = text_delta;
 	lcoff->deltas[DATA_DELTA] = data_delta;
 	lcoff->deltas[BSS_DELTA]  = bss_delta;
+
+	/* Alloc .text and .data/.bss regions. */
+	mm_alloc_section_region(lcoff,
+		aux->o_sntext,
+		lcoff->text_start,
+		lcoff->text_start + aux->o_tsize,
+		aux->o_tsize,
+		&next_text_base,
+		UC_PROT_READ|UC_PROT_EXEC, ".text");
+
+	mm_alloc_section_region(lcoff,
+		aux->o_sndata,
+		lcoff->data_start,
+		lcoff->bss_start + aux->o_bsize,
+		aux->o_dsize,
+		&next_data_base,
+		UC_PROT_READ|UC_PROT_WRITE, ".data/.bss");
 }
 
 /**
- * @brief Allocate memory for main executable.
- * Accepts XCOFF-suggested addresses (no relocation).
+ * @brief Allocate memory for a XCOFF object (executable or library).
+ *
+ * For executables: uses XCOFF-suggested addresses directly (no relocation).
+ * For libraries:   uses bump allocator and computes relocation deltas.
  *
  * @param text_vaddr .text virtual address from XCOFF.
  * @param text_size  .text size.
@@ -150,55 +342,14 @@ static void mm_alloc_memory(
  * @param data_size  .data size.
  * @param bss_vaddr  .bss virtual address from XCOFF.
  * @param bss_size   .bss size.
- * @param lcoff      Loaded COFF structure to fill.
+ * @param lcoff      Loaded XCOFF structure to fill.
+ * @param is_exe     1 for main executable, 0 for library.
  */
-void mm_alloc_main_exec_memory(
+void mm_alloc_coff_memory(
 	u32 text_vaddr, u32 text_size,
 	u32 data_vaddr, u32 data_size,
 	u32 bss_vaddr,  u32 bss_size,
-	struct loaded_coff *lcoff)
-{
-	/* Validate .text is in expected range (0x1000... range). */
-	if (text_vaddr < TEXT_START)
-		errx(1, "Main exec .text at 0x%x below TEXT_START!\n", text_vaddr);
-	if (text_vaddr >= TEXT_START + EXEC_TEXT_SIZE)
-		errx(1, "Main exec .text at 0x%x outside range!\n", text_vaddr);
-
-	/* Validate .data and .bss layout. */
-	validate_data_bss_layout(data_vaddr, data_size, bss_vaddr, bss_size);
-
-	/* Validate .data/.bss are in expected range (0x2000... range). */
-	if (data_vaddr < DATA_START)
-		errx(1, "Main exec .data at 0x%x below DATA_START!\n", data_vaddr);
-	if (data_vaddr >= DATA_START + EXEC_DATA_SIZE)
-		errx(1, "Main exec .data at 0x%x outside range!\n", data_vaddr);
-
-	/* Allocate using generic function (map full 16MiB regions). */
-	mm_alloc_memory(
-		TEXT_START, EXEC_TEXT_SIZE, TEXT_END,
-		DATA_START, EXEC_DATA_SIZE, DATA_END,
-		bss_vaddr, bss_size,
-		0, 0, 0, lcoff);  /* All deltas are 0 for main executable */
-}
-
-/**
- * @brief Allocate memory for library.
- * Uses bump allocator and calculates base_delta for relocation.
- *
- * @param text_vaddr .text virtual address from XCOFF file.
- * @param text_size  .text size.
- * @param data_vaddr .data virtual address from XCOFF file.
- * @param data_size  .data size.
- * @param bss_vaddr  .bss virtual address from XCOFF file.
- * @param bss_size   .bss size.
- * @param lcoff      Loaded COFF structure to fill.
- * @return 0 on success, -1 on error.
- */
-int mm_alloc_library_memory(
-	u32 text_vaddr, u32 text_size,
-	u32 data_vaddr, u32 data_size,
-	u32 bss_vaddr,  u32 bss_size,
-	struct loaded_coff *lcoff)
+	struct loaded_coff *lcoff, int is_exe)
 {
 	u32 text_runtime, data_runtime, bss_runtime;
 	u32 text_delta, data_delta, bss_delta;
@@ -208,97 +359,58 @@ int mm_alloc_library_memory(
 	/* Validate .data and .bss layout. */
 	validate_data_bss_layout(data_vaddr, data_size, bss_vaddr, bss_size);
 
-	/* Calculate aligned sizes. */
-	tsize = ALIGN_UP(text_size);
-	if (tsize < text_size)
-		errx(1, "Library .text size overflow after alignment!\n");
+	if (is_exe) {
+		/* Validate .text is in expected range. */
+		if (text_vaddr < TEXT_START)
+			errx(1, ".text at 0x%x below TEXT_START!\n", text_vaddr);
+		if (text_vaddr >= TEXT_START + EXEC_TEXT_SIZE)
+			errx(1, ".text at 0x%x outside range!\n",    text_vaddr);
 
-	if (safe_add_u32(bss_vaddr, bss_size, &data_end))
-		errx(1, "Library .bss causes address overflow!\n");
+		/* Validate .data/.bss are in expected range. */
+		if (data_vaddr < DATA_START)
+			errx(1, ".data at 0x%x below DATA_START!\n", data_vaddr);
+		if (data_vaddr >= DATA_START + EXEC_DATA_SIZE)
+			errx(1, ".data at 0x%x outside range!\n",    data_vaddr);
 
-	dsize = data_end - data_vaddr;
-	dsize = ALIGN_UP(dsize);
-	if (dsize < (data_end - data_vaddr))
-		errx(1, "Library .data+.bss size overflow after alignment!\n");
+		/* No relocation needed. */
+		text_runtime = text_vaddr;
+		data_runtime = data_vaddr;
+		bss_runtime  = bss_vaddr;
+		tsize        = text_size;
+		dsize        = data_size;
+		text_delta   = data_delta = bss_delta = 0;
+	} else {
+		/* Calculate aligned sizes. */
+		tsize = ALIGN_UP(text_size);
+		if (tsize < text_size)
+			errx(1, ".text size overflow after alignment!\n");
 
-	/* Get runtime addresses from bump allocator. */
-	text_runtime = next_text_base;
-	data_runtime = next_data_base;
+		if (safe_add_u32(bss_vaddr, bss_size, &data_end))
+			errx(1, ".bss causes address overflow!\n");
 
-	/* Calculate separate deltas for each section. */
-	text_delta = text_runtime - text_vaddr;
-	data_delta = data_runtime - data_vaddr;
+		dsize = data_end - data_vaddr;
+		dsize = ALIGN_UP(dsize);
+		if (dsize < (data_end - data_vaddr))
+			errx(1, ".data+.bss size overflow!\n");
 
-	/* Calculate runtime .bss address (preserve offset from .data). */
-	bss_runtime = bss_vaddr + data_delta;
-	bss_delta = bss_runtime - bss_vaddr;
+		/* Get runtime addresses from bump allocator. */
+		text_runtime = next_text_base;
+		data_runtime = next_data_base;
 
-	/* Allocate using generic function. */
+		/* Calculate separate deltas for each section. */
+		text_delta = text_runtime - text_vaddr;
+		data_delta = data_runtime - data_vaddr;
+
+		/* Runtime .bss: preserve offset from .data. */
+		bss_runtime = bss_vaddr   + data_delta;
+		bss_delta   = bss_runtime - bss_vaddr;
+	}
+
 	mm_alloc_memory(
-		text_runtime, tsize, TEXT_END,
-		data_runtime, dsize, DATA_END,
-		bss_runtime, bss_size,
-		text_delta, data_delta, bss_delta, lcoff);
-
-	/* Update bump allocators. */
-	next_text_base += tsize;
-	next_data_base += dsize;
-
-	return 0;
-}
-
-/**
- * @brief Write .text section to allocated memory.
- * Uses runtime addresses from lcoff->text_start.
- *
- * @param lcoff  Loaded COFF structure with runtime addresses.
- * @param is_exe Signals if should use the section address or the allocated
- *               address.
- */
-void mm_write_text(struct loaded_coff *lcoff, int is_exe)
-{
-	struct xcoff_sec_hdr32 *text_sec;
-	struct xcoff_aux_hdr32 *aux;
-	const void *text_buff;
-	u32 vaddr;
-
-	aux = &lcoff->xcoff.aux;
-	if (aux->o_sntext == 0 || aux->o_sntext > lcoff->xcoff.hdr.f_nscns)
-		errx(1, "Invalid .text section number!\n");
-
-	text_sec  = &lcoff->xcoff.secs[aux->o_sntext - 1];
-	text_buff = lcoff->xcoff.buff + text_sec->s_scnptr;
-	vaddr     = (is_exe ? text_sec->s_vaddr : lcoff->text_start);
-
-	if (uc_mem_write(g_uc, vaddr, text_buff, aux->o_tsize))
-		errx(1, "Failed to write .text at 0x%x!\n", vaddr);
-}
-
-/**
- * @brief Write .data section to allocated memory.
- * Uses runtime addresses from lcoff->data_start.
- *
- * @param lcoff  Loaded COFF structure with runtime addresses.
- * @param is_exe Signals if should use the section address or the allocated
- *               address.
- */
-void mm_write_data(struct loaded_coff *lcoff, int is_exe)
-{
-	struct xcoff_sec_hdr32 *data_sec;
-	struct xcoff_aux_hdr32 *aux;
-	const void *data_buff;
-	u32 vaddr;
-
-	aux = &lcoff->xcoff.aux;
-	if (aux->o_sndata == 0 || aux->o_sndata > lcoff->xcoff.hdr.f_nscns)
-		errx(1, "Invalid .data section number!\n");
-
-	data_sec  = &lcoff->xcoff.secs[aux->o_sndata - 1];
-	data_buff = lcoff->xcoff.buff + data_sec->s_scnptr;
-	vaddr     = (is_exe ? data_sec->s_vaddr : lcoff->data_start);
-
-	if (uc_mem_write(g_uc, vaddr, data_buff, aux->o_dsize))
-		errx(1, "Failed to write .data at 0x%x!\n", vaddr);
+		text_runtime, tsize,  TEXT_END,
+		data_runtime, dsize,  DATA_END,
+		bss_runtime,  bss_size,
+		text_delta, data_delta, bss_delta, lcoff, is_exe);
 }
 
 /**
@@ -436,10 +548,6 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	u32 val;
 	int i;
 
-	/* Stack. */
-	if (uc_mem_map(g_uc, STACK_ADDR-STACK_SIZE, STACK_SIZE, UC_PROT_ALL))
-		errx(1, "Unable to setup stack!\n");
-
 	bytes     = 0;
 	env_count = 0;
 	for (p = argv; *p; bytes += strlen(*p)+1, p++);
@@ -497,18 +605,6 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 }
 
 /**
- * @brief Initialize the VM's heap memory with the addresses
- * and size previously configured.
- *
- * @return Always 0.
- */
-static int mm_init_heap(void) {
-	if (uc_mem_map(g_uc, HEAP_ADDR, HEAP_SIZE, UC_PROT_ALL))
-		errx(1, "Unable to setup heap!\n");
-	return 0;
-}
-
-/**
  * @brief Initialize memory manager with Unicorn instance.
  *
  * @param uc Unicorn engine instance.
@@ -523,13 +619,8 @@ void mm_init(uc_engine *uc)
 	next_text_base = TEXT_START + EXEC_TEXT_SIZE;
 	next_data_base = DATA_START + EXEC_DATA_SIZE;
 
-	/*
-	 * AIX deliberately maps the page 0 on userspace and libc, programs
-	 * and etc works based on this assumption, so we need to mimick
-	 * this cursed behavior too =/.
-	 */
-	if (uc_mem_map(uc, 0, 4096, UC_PROT_READ))
-		errx(1, "Unable to map page 0!\n");
+	/* Initialize all static regions. */
+	mm_regions_init();
 
 	/* Troubleshooting hooks. */
 	err = uc_hook_add(g_uc, &inv_read,
@@ -546,6 +637,4 @@ void mm_init(uc_engine *uc)
 		UC_HOOK_INSN_INVALID, hook_invalid_insn, NULL, 1, 0);
 	if (err)
 		errx(1, "Unable to insert invalid insn hook!\n");
-
-	mm_init_heap();
 }

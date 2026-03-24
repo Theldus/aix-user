@@ -203,11 +203,6 @@ void milicode_init(uc_engine *uc)
 	uc_err err;
 	int i;
 
-	/* Map memory range for our AIX milicodes. */
-	err = uc_mem_map(uc, UNIX_MILI_ADDR, UNIX_MILI_SIZE, UC_PROT_ALL);
-	if (err)
-		errx(1, "Unable to map milicode area!\n");
-
 	for (i = 0; i < sizeof(milicodes)/sizeof(milicodes[0]); i++) {
 		MC("Milicode #%d, addr=%x, len=%d\n", i, milicodes[i].addr,
 			milicodes[i].size);

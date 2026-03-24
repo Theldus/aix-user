@@ -261,19 +261,6 @@ void unix_init(uc_engine *uc)
 	next_data_idx  = 0;
 	next_data_addr = UNIX_DATA_ADDR;
 
-	/* Allocate memory region for /unix function descriptors. */
-	err = uc_mem_map(g_uc, UNIX_DESC_ADDR, UNIX_DESC_SIZE,
-	                 UC_PROT_READ | UC_PROT_WRITE);
-	if (err)
-		errx(1, "Failed to map /unix descriptor region: %s\n",
-		     uc_strerror(err));
-
-	/* Allocate memory region for /unix data. */
-	err = uc_mem_map(g_uc, UNIX_DATA_ADDR, UNIX_DATA_SIZE,
-		             UC_PROT_READ | UC_PROT_WRITE);
-	if (err)
-		errx(1, "Failed to map /unix data: %s\n", uc_strerror(err));
-
 	/* Initial registers values. */
 	registers_init(uc);
 	/* Add milicode functions. */

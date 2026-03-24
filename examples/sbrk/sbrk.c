@@ -57,16 +57,18 @@ int main(void)
 		FAIL("memory write/read failed");
 	PASS();
 
-	/* Test 4: sbrk with negative increment (shrink) */
-	TEST("sbrk(-2048) - shrink heap");
+	/* Test 4: sbrk with negative increment (shrink).
+	 * Use page-aligned value since AIX rounds the break value
+	 * to a size appropriate for the memory management architecture. */
+	TEST("sbrk(-4096) - shrink heap");
 	old_brk = sbrk(0);
-	new_brk = sbrk(-2048);
+	new_brk = sbrk(-4096);
 	if (new_brk == (void*)-1)
-		FAIL("sbrk(-2048) returned -1");
+		FAIL("sbrk(-4096) returned -1");
 	if (new_brk != old_brk)
 		FAIL("sbrk didn't return old break value");
 	tmp = sbrk(0);
-	if (tmp != (char*)old_brk - 2048)
+	if (tmp != (char*)old_brk - 4096)
 		FAIL("break not decreased correctly");
 	printf("  Old: 0x%x, New: 0x%x\n", (unsigned)old_brk, (unsigned)tmp);
 	PASS();

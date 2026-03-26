@@ -4,6 +4,7 @@
  * Made by Theldus, 2025-2026
  */
 
+#include <string.h>
 #include <time.h>
 #include <arpa/inet.h>
 #include "mm.h"
@@ -172,19 +173,23 @@ static void mili_muldiv64(uc_engine *uc, u64 addr, u32 size, void *user_data)
 static void milicode_hooks_init(uc_engine *uc)
 {
 	struct hook_milicode *hm;
+	char *h_mili_base;
 	uc_err  err;
 	uc_hook mili;
-
 	int i;
+
+	if (!(h_mili_base = mm_vm2host(UNIX_MILI_ADDR)))
+		errx(1, "Milicodes are not mapped?\n");
+
 	for (i = 0; i < sizeof(hook_milicodes)/sizeof(hook_milicodes[0]); i++) {
 		hm = &hook_milicodes[i];
 		MC("Hook milicode #%d at: 0x%x\n", i, hook_milicodes[i].addr);
 
 		/* Add dummy values at the expected location. */
-		err = uc_mem_write(uc, hm->addr, GENERIC_HOOK_MILI_HDLR,
+		memcpy(
+			h_mili_base + (hm->addr - UNIX_MILI_ADDR),
+			GENERIC_HOOK_MILI_HDLR,
 			sizeof(GENERIC_HOOK_MILI_HDLR) - 1);
-		if (err)
-			errx(1, "Unable to add generic handler at: 0x%x\n", hm->addr);
 
 		/* Add hook for the function. */
 		err = uc_hook_add(uc, &mili, UC_HOOK_CODE, hm->hndlr, NULL, hm->addr,
@@ -200,17 +205,21 @@ static void milicode_hooks_init(uc_engine *uc)
  */
 void milicode_init(uc_engine *uc)
 {
+	char *h_mili_base;
 	uc_err err;
 	int i;
+
+	if (!(h_mili_base = mm_vm2host(UNIX_MILI_ADDR)))
+		errx(1, "Milicodes are not mapped?\n");
 
 	for (i = 0; i < sizeof(milicodes)/sizeof(milicodes[0]); i++) {
 		MC("Milicode #%d, addr=%x, len=%d\n", i, milicodes[i].addr,
 			milicodes[i].size);
-		
-		err = uc_mem_write(uc, milicodes[i].addr, milicodes[i].buff,
-			               milicodes[i].size);
-		if (err)
-			errx(1, "Unable to map current milicode, aborting...!\n");
+
+		memcpy(
+			h_mili_base + (milicodes[i].addr - UNIX_MILI_ADDR),
+			milicodes[i].buff,
+			milicodes[i].size);
 	}
 
 	milicode_hooks_init(uc);

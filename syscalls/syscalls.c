@@ -223,7 +223,7 @@ u32 syscall_register(const char *sym_name)
 {
 	int i;
 	int idx;
-	u32 desc[3];
+	u32 *h_desc;
 	size_t table_size;
 
 	/*
@@ -247,13 +247,12 @@ u32 syscall_register(const char *sym_name)
 	 * Build the function descriptor.
 	 * Note: Values are stored in big-endian (AIX PowerPC is big-endian).
 	 */
-	desc[0] = htonl(SYSCALL_ADDR);  /* Entry point: 0x3700            */
-	desc[1] = htonl(idx);           /* TOC/syscall index              */
-	desc[2] = desc[1];              /* Environment (same as TOC)      */
-
-	/* Write descriptor to VM memory. */
-	if (uc_mem_write(g_uc, next_desc_addr, desc, sizeof(desc)))
-		errx(1, "Failed to write /unix descriptor for '%s'\n", sym_name);
+	if (!(h_desc = mm_vm2host(next_desc_addr)))
+		errx(1, "Unable to find mapping to next_desc_addr!!\n");
+	
+	h_desc[0] = htonl(SYSCALL_ADDR);  /* Entry point: 0x3700            */
+	h_desc[1] = htonl(idx);           /* TOC/syscall index              */
+	h_desc[2] = h_desc[1];            /* Environment (same as TOC)      */
 
 	/* Register the new syscall. */
 	unix_syscalls[idx].sym_name      = sym_name;
@@ -343,9 +342,13 @@ static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
 void syscalls_init(uc_engine *uc)
 {
 	uc_err err;
+	char *h_sys;
 
 	if (!uc)
 		errx(1, "syscalls_init: NULL uc_engine pointer\n");
+
+	if (!(h_sys = mm_vm2host(SYSCALL_ADDR)))
+		errx(1, "Syscalls are not mapped?\n");
 
 	/* Initialize global state. */
 	g_uc = uc;
@@ -353,11 +356,7 @@ void syscalls_init(uc_engine *uc)
 	next_desc_addr   = UNIX_DESC_ADDR;
 
 	/* Write the syscall stub code at 0x3700. */
-	err = uc_mem_write(uc, SYSCALL_ADDR, SYSCALL_HDLR,
-	                   sizeof(SYSCALL_HDLR) - 1);
-	if (err)
-		errx(1, "Failed to write syscall handler: %s\n",
-		     uc_strerror(err));
+	memcpy(h_sys, SYSCALL_HDLR, sizeof(SYSCALL_HDLR) - 1);
 
 	/* Install Unicorn hook to intercept syscalls. */
 	err = uc_hook_add(g_uc, &syscall_trace, UC_HOOK_CODE,

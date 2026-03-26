@@ -65,8 +65,8 @@ static u32 next_data_idx;
 static uc_engine *g_uc = NULL;
 
 /* Local copy of system config. */
-static struct system_config sysconfig;
-static struct system_tb_config sys_tb_config;
+static struct system_config *sysconfig;
+static struct system_tb_config *sys_tb_config;
 
 /* errno and _environ. */
 u32 vm_errno;
@@ -221,17 +221,18 @@ static void registers_init(uc_engine *uc)
  */
 void unix_init_system_config(uc_engine *uc)
 {
+	if (!(sysconfig = mm_vm2host(UNIX_SYSTEM_CONFIG)))
+		errx(1, "Unable to find mapping to _unix_system_config!\n");
+	if (!(sys_tb_config = mm_vm2host(UNIX_SYSTEM_TB_CONFIG)))
+		errx(1, "Unable to find mapping to _system_TB_config!\n");
+
 	/* _system_configuration. */
-	sysconfig.xint  = htonl((s32)1);
-	sysconfig.xfrac = htonl((s32)1);
-	sysconfig.rtc   = htonl((s32)RTC_POWER_PC);
-	if (uc_mem_write(uc, UNIX_SYSTEM_CONFIG, &sysconfig, sizeof sysconfig))
-		errx(1, "Unable to write into _system_configuration!\n");
+	sysconfig->xint  = htonl((s32)1);
+	sysconfig->xfrac = htonl((s32)1);
+	sysconfig->rtc   = htonl((s32)RTC_POWER_PC);
 
 	/* _system_tb_config */
-	sys_tb_config.tb_ns_per_tic.kernel_help = htonl((s32)1);
-	if (uc_mem_write(uc, UNIX_SYSTEM_TB_CONFIG, &sys_tb_config, sizeof sys_tb_config))
-		errx(1, "Unable to write into _system_TB_config!\n");
+	sys_tb_config->tb_ns_per_tic.kernel_help = htonl((s32)1);
 
 	UNIX("_system_configuration/tb configured! (0x%x - 0x%x)\n",
 		UNIX_SYSTEM_CONFIG, UNIX_SYSTEM_TB_CONFIG);

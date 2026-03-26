@@ -4,6 +4,7 @@
  * Made by Theldus, 2025-2026
  */
 
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -11,6 +12,7 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /**
  * @brief lseek syscall handler
@@ -68,6 +70,7 @@ int aix_lseek(uc_engine *uc)
  */
 int aix_klseek(uc_engine *uc)
 {
+	char *h_offp;
 	int ret;
 	u32 vm_fd   = read_1st_arg();
 	u64 vm_off  = (((u64)read_2nd_arg()) << 32) | read_3rd_arg();
@@ -75,22 +78,25 @@ int aix_klseek(uc_engine *uc)
 	u32 vm_offp = read_5th_arg();
 	s64 off;
 
-	ret = 0;
+	ret = -1;
 	off = lseek(vm_fd, vm_off, vm_whe);
 	if (off < 0) {
-		ret = -1;
 		unix_set_conv_errno(errno);
+		goto out;
+	}
+
+	/* Convert host buffer from VM memory. */
+	if (!(h_offp = mm_vm2host(vm_offp))) {
+		unix_set_errno(AIX_EFAULT);
+		goto out;
 	}
 
 	/* Write resulting offset into offp. */
-	if (off >= 0) {
-		off = htonll(off);
-		if (uc_mem_write(uc, vm_offp, &off, 8)) {
-			ret = -1;
-			unix_set_errno(AIX_EFAULT);
-		}
-	}
+	off = htonll(off);
+	memcpy(h_offp, &off, 8);
 
+	ret = 0;
+out:
 	TRACE("klseek", "%d, %" PRIx64", %d", vm_fd, vm_off, vm_whe);
 	return ret;
 }

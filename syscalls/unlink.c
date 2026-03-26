@@ -8,6 +8,7 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /**
  * @brief unlink syscall handler.
@@ -24,11 +25,11 @@
 int aix_unlink(uc_engine *uc)
 {
 	int ret;
-	char h_path[1024] = {0};
-	u32 path = read_1st_arg();
+	char *h_path = NULL;
+	u32 path     = read_1st_arg();
 
 	ret = -1;
-	if (uc_mem_read(uc, path, &h_path, sizeof h_path)) {
+	if (!(h_path = mm_vm2host(path))) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}

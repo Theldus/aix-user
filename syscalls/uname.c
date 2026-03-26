@@ -4,10 +4,12 @@
  * Made by Theldus, 2025-2026
  */
 
+#include <string.h>
 #include <unistd.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 #define AIX_SYS_NMLN 32
 static struct aix_utsname {
@@ -46,19 +48,21 @@ int aix_uname(uc_engine *uc)
 {
 	int ret     = -1;
 	u32 utsname = read_1st_arg();
+	char *h_utsname;
 
 	if (!utsname) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 
-	/* Read path from VM to host. */
-	if (uc_mem_write(uc, utsname, &h_auts, sizeof h_auts)) {
-		warn("uname: failed to write utsname, at 0x%x\n", utsname);
+	/* Convert host buffer from VM memory. */
+	if (!(h_utsname = mm_vm2host(utsname))) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 
+	/* Copy utsname to AIX. */
+	memcpy(h_utsname, &h_auts, sizeof h_auts);
 	ret = 0;
 out:
 	TRACE("uname", "%x", utsname);
@@ -81,19 +85,21 @@ int aix_unamex(uc_engine *uc)
 {
 	int ret      = -1;
 	u32 xutsname = read_1st_arg();
+	char *h_xutsname;
 
 	if (!xutsname) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 
-	/* Read path from VM to host. */
-	if (uc_mem_write(uc, xutsname, &h_autsx, sizeof h_autsx)) {
-		warn("unamex: failed to write utsname, at 0x%x\n", xutsname);
+	/* Convert host buffer from VM memory. */
+	if (!(h_xutsname = mm_vm2host(xutsname))) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 
+	/* Copy xutsname to AIX. */
+	memcpy(h_xutsname, &h_autsx, sizeof h_autsx);
 	ret = 0;
 out:
 	TRACE("unamex", "%x", xutsname);

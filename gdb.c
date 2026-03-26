@@ -13,6 +13,7 @@
 #include <unicorn/unicorn.h>
 
 #include "gdb.h"
+#include "mm.h"
 
 /* GDB handle states. */
 #define GDB_STATE_START   0x1
@@ -47,9 +48,6 @@ static int cl_fd = -1;
 /* The registers are cached, so this flag signals
  * if the cache is updated or not. */
 static int have_ppc_regs = 0;
-
-/* Memory dump helpers. */
-static uint8_t *dump_buffer;
 
 /*
  * Keeps all the variables for the GDB state machine here
@@ -397,7 +395,6 @@ static void handle_gdb_read_registers(uc_engine *uc)
  */
 static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
 {
-	static u8 *dump_buffer;
 	uint32_t addr, amnt;
 	const char *ptr;
 	char *dump_buff;
@@ -413,31 +410,17 @@ static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
 	/* Get amount. */
 	amnt = simple_read_int(ptr, len, 16);
 
-	/* */
-	dump_buff = malloc(amnt);
-	if (!dump_buff)
-		errx(1, "GDBStub: Unable to alloc %u bytes!\n", amnt);
-
 	/*
 	 * For some reason, GDB insists on reading the addr 0x0
 	 * so I'm just cutting some shortcuts here:
 	 */
-	if (addr == 0) {
-		send_gdb_error();
-		return -1;
-	}
-
-	if (uc_mem_read(uc, addr, dump_buff, amnt)) {
-		warn("Unable to read from VM memory: 0x%08x\n", addr);
-		free(dump_buff);
+	if (!addr || !(dump_buff = mm_vm2host(addr))) {
 		send_gdb_error();
 		return -1;
 	}
 
 	hexa_buff = encode_hex(dump_buff, amnt);
 	send_gdb_cmd(hexa_buff, amnt * 2);
-	free(dump_buff);
-
 	return 0;
 }
 

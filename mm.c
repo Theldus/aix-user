@@ -49,13 +49,31 @@ char *curr_heap;
 #define MM_REGIONS 32
 static struct mm_region {
 	const char *description;
-	const u8 *host_base;
+	u8 *host_base;
 	u32 vm_base;
 	u32 prot;
 	u32 size;
 } regions [MM_REGIONS];
 
 static int region_idx;
+
+/**
+ * @brief For a given Unicorn's address, returns the equivalent host address.
+ * @param vaddr Unicorn memory address.
+ * @return Host equivalent address.
+ */
+void *mm_vm2host(u32 vaddr)
+{
+	struct mm_region *r;
+	u32 off;
+	int i;
+	for (i = 0; i < region_idx; i++) {
+		r = &regions[i];
+		if (vaddr >= r->vm_base && (off = (vaddr - r->vm_base)) < r->size)
+			return (r->host_base + off);
+	}
+	return NULL;
+}
 
 /**
  * @brief Given a Unicorn's memory permission, map into rwx.
@@ -99,7 +117,7 @@ static const char *format_size(u32 size) {
  *                  into Unicorn.
  * @param desc      String description of the to-be mapped memory region.
  */
-static void mm_alloc_region(u32 vm_base, u32 size, const void *host_base, u32 prot,
+static void mm_alloc_region(u32 vm_base, u32 size, void *host_base, u32 prot,
 	const char *desc)
 {
 	uc_err err;
@@ -425,12 +443,13 @@ void mm_alloc_coff_memory(
  */
 u32 mm_read_u32(u32 vaddr, int *err)
 {
-	u32 v = 0;
-	if (uc_mem_read(g_uc, vaddr, &v, sizeof v)) {
-		warn("Unable to read a u32 from %x!\n", vaddr);
+	u32 *h_addr;
+	if (!(h_addr = mm_vm2host(vaddr))) {
 		*err = -1;
+		warn("Unable to find a mapping from %x!\n", vaddr);
+		return 0;
 	}
-	return htonl(v);
+	return htonl(*h_addr);
 }
 
 /**
@@ -445,11 +464,12 @@ u32 mm_read_u32(u32 vaddr, int *err)
  */
 int mm_write_u32(u32 vaddr, u32 value)
 {
-	value = htonl(value);
-	if (uc_mem_write(g_uc, vaddr, &value, sizeof value)) {
-		warn("Unable to write %x into %x!\n", value, vaddr);
+	u32 *h_addr;
+	if (!(h_addr = mm_vm2host(vaddr))) {
+		warn("Unable to find a mapping from %x!\n", vaddr);
 		return -1;
 	}
+	*h_addr = htonl(value);
 	return 0;
 }
 
@@ -523,9 +543,11 @@ static void hook_invalid_insn(uc_engine *uc, void *data) {
  */
 static u32 mm_strcpy(u32 dst, const char *src)
 {
+	char *h_dst;
 	size_t len = strlen(src) + 1;
-	if (uc_mem_write(g_uc, dst, src, len))
-		errx(1, "Unable to copy string (%s) into VM: %x!\n", src, dst);
+	if (!(h_dst = mm_vm2host(dst)))
+		errx(1, "Unable to find mapping from %x address!\n", dst);
+	memcpy(h_dst, src, len);
 	return dst+len;
 }
 

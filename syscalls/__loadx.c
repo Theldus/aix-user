@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "syscalls.h"
+#include "mm.h"
 
 /**
  * @brief __loadx syscall handler.
@@ -39,13 +40,14 @@ int aix___loadx(uc_engine *uc)
 	u32 sym_org = read_4th_arg();
 	u32 ext     = read_5th_arg();
 	int ret     = 0;
-	char s[32]  = {0};
+	char *h_s;
 
-	if (uc_mem_read(uc, sname, s, sizeof s - 1)) {
+	/* Convert host buffer from VM memory. */
+	if (!(h_s = mm_vm2host(sname))) {
 		warn("kwrite: failed to read from VM address 0x%x\n", sname);
 		return -1;
 	}
 
-	TRACE("__loadx", "%x, %s, %x, %x, %x", flg,s,sym_idx,sym_org,ext);
+	TRACE("__loadx", "%x, %s, %x, %x, %x", flg,h_s,sym_idx,sym_org,ext);
 	return ret;
 }

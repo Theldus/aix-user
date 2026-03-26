@@ -11,6 +11,7 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 struct aix_tms {
 	s32	tms_utime;   /* User time.             */
@@ -34,8 +35,8 @@ struct aix_tms {
  */
 int aix_times(uc_engine *uc)
 {
-	struct tms     l_tms;
-	struct aix_tms a_tms;
+	struct tms      l_tms;
+	struct aix_tms *a_tms;
 	clock_t l_ret;
 	int ret;
 	u32 tms;
@@ -43,23 +44,23 @@ int aix_times(uc_engine *uc)
 	tms   = read_1st_arg();
 	ret   = -1;
 	l_ret = times(&l_tms);
-	
+
 	if (l_ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;
 	}
 
-	/* Overflow is allowed. */
-	a_tms.tms_utime  = htonl((s32)l_tms.tms_utime);
-	a_tms.tms_stime  = htonl((s32)l_tms.tms_stime);
-	a_tms.tms_cutime = htonl((s32)l_tms.tms_cutime);
-	a_tms.tms_cstime = htonl((s32)l_tms.tms_cstime);
-
-	/* Write the struct. */
-	if (uc_mem_write(uc, tms, &a_tms, sizeof(struct aix_tms))) {
+	/* Convert host buffer from VM memory. */
+	if (!tms || !(a_tms = mm_vm2host(tms))) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
+
+	/* Overflow is allowed. */
+	a_tms->tms_utime  = htonl((s32)l_tms.tms_utime);
+	a_tms->tms_stime  = htonl((s32)l_tms.tms_stime);
+	a_tms->tms_cutime = htonl((s32)l_tms.tms_cutime);
+	a_tms->tms_cstime = htonl((s32)l_tms.tms_cstime);
 
 	ret = l_ret;
 out:

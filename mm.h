@@ -72,5 +72,8 @@ int mm_write_u32(u32 vaddr, u32 value);
 /* Initialize stack with proper values for argc,argv and envp. */
 void mm_init_stack(int argc, const char **argv, const char **envp);
 
+/* Returns the host-equivalent address for a given Unicorn
+ * memory address. */
+void *mm_vm2host(u32 vaddr);
 
 #endif /* MM_H. */

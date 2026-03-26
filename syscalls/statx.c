@@ -14,6 +14,7 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 static u32 o_errno;
 static struct stat linux_st;
@@ -247,7 +248,8 @@ stat64x_linux2aix(struct aix_stat64x *aix_st, const struct stat *linux_st)
  */
 static int do_stat(uc_engine *uc, int have_fd)
 {
-	char spath[1024] = {0};
+	char *spath = NULL;
+	char *hbuff = NULL;
 	u32 path_fd = read_1st_arg();
 	u32 buff    = read_2nd_arg();
 	u32 length  = read_3rd_arg();
@@ -257,7 +259,7 @@ static int do_stat(uc_engine *uc, int have_fd)
 	size_t exp_len;
 
 	if (!have_fd) {
-		if (uc_mem_read(uc, path_fd, &spath, sizeof spath)) {
+		if (!(spath = mm_vm2host(path_fd))) {
 			unix_set_errno(AIX_EINVAL);
 			goto out;
 		}
@@ -322,12 +324,13 @@ static int do_stat(uc_engine *uc, int have_fd)
 	}
 
 	/* Write the converted structure to destination */
-	if (uc_mem_write(uc, buff, st, length)) {
-		unix_set_errno(AIX_EINVAL);
+	if (!(hbuff = mm_vm2host(buff))) {
 		ret = -1;
+		unix_set_errno(AIX_EINVAL);
 		goto out;
 	}
 
+	memcpy(hbuff, st, length);
 	ret = 0;
 out:
 	if (!have_fd)

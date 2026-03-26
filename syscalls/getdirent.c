@@ -14,6 +14,7 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 #define NAME_MAX_LEN 255 /* Maximum name length on a dirent!!. */
 
@@ -90,7 +91,7 @@ int aix_getdirent64(uc_engine *uc)
 	u32 vm_d64ptr = read_2nd_arg();
 	u32 vm_d64siz = read_3rd_arg();
 
-	u32 ptr;
+	char *ptr;
 	u32 rem_size;
 
 	struct linux_dirent64 *ldir64;
@@ -102,9 +103,14 @@ int aix_getdirent64(uc_engine *uc)
 	int      ret;
 	int      pos;
 
+	l_buff = NULL;
+	ret    = -1;
+
 	/* Handle zero-length reads. */
-	if (vm_d64siz == 0)
-		return 0;
+	if (vm_d64siz == 0) {
+		ret = 0;
+		goto out;
+	}
 
 	/*
 	 * Allocate a buffer just a hair bigger than the one provided by AIX, so
@@ -123,7 +129,12 @@ int aix_getdirent64(uc_engine *uc)
 		goto out;
 	}
 
-	ptr      = vm_d64ptr;
+	/* Convert host ptr buffer from VM memory. */
+	if (!(ptr = mm_vm2host(vm_d64ptr))) {
+		unix_set_errno(AIX_EFAULT);
+		goto out;
+	}
+
 	rem_size = vm_d64siz;
 	written  = 0;
 	last_off = 0;
@@ -145,18 +156,12 @@ int aix_getdirent64(uc_engine *uc)
 			 * getdents64), only returns 0 and do no set errno. */
 			break;
 		}
-
-		if (uc_mem_write(uc, ptr, &adir64, ret)) {
-			unix_set_errno(AIX_EFAULT);
-			ret = -1;
-			goto out;
-		}
-
+		
+		memcpy(ptr, &adir64, ret);
 		last_off = ldir64->d_off;
-
-		l_ret  -= ldir64->d_reclen;
-		pos    += ldir64->d_reclen;
-		ldir64  = (struct linux_dirent64 *)(l_buff + pos);
+		l_ret   -= ldir64->d_reclen;
+		pos     += ldir64->d_reclen;
+		ldir64   = (struct linux_dirent64 *)(l_buff + pos);
 
 		rem_size -= ret;
 		ptr      += ret;

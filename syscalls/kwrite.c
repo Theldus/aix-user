@@ -6,6 +6,10 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+
+#include "aix_errno.h"
+#include "mm.h"
+#include "unix.h"
 #include "syscalls.h"
 
 /**
@@ -32,26 +36,25 @@ int aix_kwrite(uc_engine *uc)
 	u32 vm_buff  = read_2nd_arg();
 	u32 vm_count = read_3rd_arg();
 
+	ret = -1;
+
 	/* Handle zero-length writes. */
-	if (vm_count == 0)
-		return 0;
+	if (!vm_count) {
+		ret = 0;
+		goto out;
+	}
 
-	/* Allocate host buffer to copy VM memory. */
-	h_buff = malloc(vm_count);
-	if (!h_buff)
-		errx(1, "Host OOM: failed to allocate %u bytes\n", vm_count);
-
-	/* Copy data from VM memory to host buffer. */
-	if (uc_mem_read(uc, vm_buff, h_buff, vm_count)) {
-		warn("kwrite: failed to read from VM address 0x%x\n", vm_buff);
-		free(h_buff);
-		return -1;
+	/* Convert host buffer from VM memory. */
+	if (!(h_buff = mm_vm2host(vm_buff))) {
+		unix_set_errno(AIX_EFAULT);
+		goto out;
 	}
 
 	/* Perform the actual write on the host. */
 	ret = write(vm_fd, h_buff, vm_count);
-
+	if (ret < 0)
+		unix_set_conv_errno(errno);
+out:
 	TRACE("kwrite", "%d, %x, %d", vm_fd, vm_buff, vm_count);
-	free(h_buff);
 	return ret;
 }

@@ -4,11 +4,13 @@
  * Made by Theldus, 2025-2026
  */
 
+#include <string.h>
 #include <arpa/inet.h>
 #include <sys/resource.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /* Limits. */
 #define AIX_RLIMIT_CPU     0 /* CPU time, in ms. */
@@ -46,13 +48,20 @@ static int do_getrlimit(uc_engine *uc, int is_64bit)
 	struct rlimit l_rlim;
 	u32 resource = read_1st_arg();
 	u32 d_rlimit = read_2nd_arg();
-	int ret;
+	char *h_drlimit;
 	int l_res;
+	int ret;
 
 	ret = -1;
 
 	/* Handle NULL pointer. */
 	if (d_rlimit == 0) {
+		unix_set_errno(AIX_EFAULT);
+		goto out;
+	}
+
+	/* Convert host buffer from VM memory. */
+	if (!(h_drlimit = mm_vm2host(d_rlimit))) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
@@ -84,23 +93,11 @@ static int do_getrlimit(uc_engine *uc, int is_64bit)
 	if (is_64bit) {
 		ar64.rlim_cur = htonll(l_rlim.rlim_cur);
 		ar64.rlim_max = htonll(l_rlim.rlim_max);
-
-		if (uc_mem_write(uc, d_rlimit, &ar64, sizeof ar64)) {
-			unix_set_errno(AIX_EFAULT);
-			warn("getrlimit64: failed to write to VM address 0x%x\n", d_rlimit);
-			ret = -1;
-			goto out;
-		}
+		memcpy(h_drlimit, &ar64, sizeof ar64);
 	} else {
 		ar32.rlim_cur = htonl((u32)l_rlim.rlim_cur);
 		ar32.rlim_max = htonl((u32)l_rlim.rlim_max);
-
-		if (uc_mem_write(uc, d_rlimit, &ar32, sizeof ar32)) {
-			unix_set_errno(AIX_EFAULT);
-			warn("appgetrlimit: failed to write to VM address 0x%x\n", d_rlimit);
-			ret = -1;
-			goto out;
-		}
+		memcpy(h_drlimit, &ar32, sizeof ar32);
 	}
 
 	ret = 0;

@@ -10,6 +10,7 @@
 #include "unix.h"
 #include "syscalls.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /* Command values. */
 #define VM_PAGE_INFO 7
@@ -18,7 +19,7 @@
 struct vm_page_info {
 	u32 addr[2];     /* IN: address to be checked. */
 	u32 pagesize[2]; /* OUT: page size of the address above. */
-} pg_info;
+};
 
 /**
  * @brief vmgetinfo - Retrieves Virtual Memory Manager (VMM) information
@@ -47,25 +48,25 @@ struct vm_page_info {
  */
 int aix_vmgetinfo(uc_engine *uc)
 {
+	struct vm_page_info *pginfo;
 	u32 out = read_1st_arg();
 	u32 cmd = read_2nd_arg();
 	u32 add = read_3rd_arg();
-	int ret = 0;
+	int ret = -1;
 
 	if (cmd != VM_PAGE_INFO) {
-		ret = -1;
 		unix_set_errno(AIX_EINVAL);
 		goto out;
 	}
 
-	if (uc_mem_read(uc, out, &pg_info, sizeof pg_info)) {
-		ret = -1;
-		unix_set_errno(AIX_EINVAL);
+	/* Convert host buffer from VM memory. */
+	if (!(pginfo = mm_vm2host(out))) {
+		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 
-	pg_info.pagesize[1] = htonl(4096);
-	uc_mem_write(uc, out, &pg_info, sizeof pg_info);
+	ret = 0;
+	pginfo->pagesize[1] = htonl(4096);
 out:
 	TRACE("vmgetinfo", "0x%x, %d, %d", out, cmd, add);
 	return ret;

@@ -6,9 +6,11 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /**
  * @brief kread syscall handler.
@@ -32,33 +34,25 @@ int aix_kread(uc_engine *uc)
 	u32 vm_buff  = read_2nd_arg();
 	u32 vm_count = read_3rd_arg();
 
+	ret = -1;
+
 	/* Handle zero-length reads. */
-	if (vm_count == 0)
-		return 0;
-
-	/* Allocate host buffer to copy VM memory. */
-	h_buff = malloc(vm_count);
-	if (!h_buff)
-		errx(1, "Host OOM: failed to allocate %u bytes\n", vm_count);
-
-	/* Read FD on Linux and copy to our local buffer, before copying to the VM
-	 * memory. */
-	ret = read(vm_fd, h_buff, vm_count);
-	if (ret < 0) {
-		unix_set_conv_errno(errno);
+	if (!vm_count) {
+		ret = 0;
 		goto out;
 	}
 
-	/* Copy data from host to VM memory. */
-	if (uc_mem_write(uc, vm_buff, h_buff, vm_count)) {
+	/* Convert host buffer from VM memory. */
+	if (!(h_buff = mm_vm2host(vm_buff))) {
 		unix_set_errno(AIX_EFAULT);
-		warn("kread: failed to write to VM address 0x%x\n", vm_buff);
-		free(h_buff);
-		return -1;
+		goto out;
 	}
 
+	/* Read FD on Linux with the already-mapped vm/host buffer. */
+	ret = read(vm_fd, h_buff, vm_count);
+	if (ret < 0)
+		unix_set_conv_errno(errno);
 out:
 	TRACE("kread", "%d, %x, %d", vm_fd, vm_buff, vm_count);
-	free(h_buff);
 	return ret;
 }

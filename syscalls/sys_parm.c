@@ -4,11 +4,13 @@
  * Made by Theldus, 2025-2026
  */
 
+#include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /* Commands */
 #define SYSP_GET 0
@@ -36,8 +38,15 @@ int aix_sys_parm(uc_engine *uc)
 	u32 cmd = read_1st_arg();
 	u32 flg = read_2nd_arg();
 	u32 ptr = read_3rd_arg();
+	char *h_ptr;
 	long l_val;
 	u64 a_val;
+
+	/* Convert host buffer from VM memory. */
+	if (!(h_ptr = mm_vm2host(ptr))) {
+		unix_set_errno(AIX_EFAULT);
+		goto out;
+	}
 
 	if (cmd == SYSP_SET) {
 		warn("sys_parm: SYSP_SET not implemented!\n");
@@ -55,10 +64,7 @@ int aix_sys_parm(uc_engine *uc)
 	}
 
 	a_val = htonll((u64)l_val);
-	if (uc_mem_write(uc, ptr, &a_val, 8)) {
-		unix_set_errno(AIX_EFAULT);
-		goto out;
-	}
+	memcpy(h_ptr, &a_val, 8);
 	ret = 0;
 out:
 	TRACE("sys_parm", "%d, %d, %x", cmd, flg, ptr);

@@ -12,6 +12,7 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "mm.h"
 
 /*
  * Note:
@@ -71,15 +72,15 @@
 int aix_kopen(uc_engine *uc)
 {
 	int ret;
-	char opath[1024] = {0};
+	char *opath = NULL;
 	u32 path   = read_1st_arg();
 	u32 flags  = read_2nd_arg();
 	u32 mode   = read_3rd_arg();
 	s32 lflags = 0;
 
 	ret = -1;
-	if (uc_mem_read(uc, path, &opath, sizeof opath)) {
-		unix_set_errno(AIX_EINVAL);
+	if (!(opath = mm_vm2host(path))) {
+		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 

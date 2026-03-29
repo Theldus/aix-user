@@ -140,6 +140,8 @@ static struct sys_table_entry sys_table[] = {
 	{"uname",          aix_uname},
 	{"unamex",         aix_unamex},
 	{"kill",           aix_kill},
+	{"_nsleep",        aix__nsleep},
+	{"_clock_nanosleep", aix__clock_nanosleep},
 };
 
 /**

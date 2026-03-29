@@ -14,20 +14,11 @@
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
+#include "aix_time.h"
 #include "mm.h"
 
 static u32 o_errno;
 static struct stat linux_st;
-
-struct aix_st_timespec {
-	u32 tv_sec;
-	u32 tv_nsec;
-};
-struct aix_timespec64 {
-	u64 tv_sec;
-	s32 tv_nsec;
-	s32 tv_pad;
-};
 
 static struct aix_stat {
 	u32 st_dev;

@@ -80,6 +80,7 @@ extern int aix_fchdir(uc_engine *uc);
 extern int aix_uname(uc_engine *uc);
 extern int aix_unamex(uc_engine *uc);
 extern int aix_kill(uc_engine *uc);
+extern int aix__nsleep(uc_engine *uc);
+extern int aix__clock_nanosleep(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */
-

@@ -49,6 +49,7 @@ OBJS += syscalls/chown.o
 OBJS += syscalls/chdir.o
 OBJS += syscalls/uname.o
 OBJS += syscalls/kill.o
+OBJS += syscalls/nanosleep.o
 
 # Pretty print
 Q := @

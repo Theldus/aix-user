@@ -425,6 +425,97 @@ static int handle_gdb_read_memory(uc_engine *uc, const char *mbuff, size_t len)
 }
 
 /**
+ * @brief Handles the 'write memory (M)' command from GDB.
+ *
+ * @param uc   Unicorn engine context.
+ * @param buff Message buffer to be parsed.
+ * @param len  Buffer length.
+ *
+ * @return Returns 0 if the request is valid, -1 otherwise.
+ */
+static int handle_gdb_write_memory(uc_engine *uc, const char *buff, size_t len)
+{
+	const char *ptr, *memory;
+	uint32_t addr, amnt;
+	char *host;
+
+	ptr = buff;
+
+	/* Skip first 'M'. */
+	expect_char('M', ptr, len);
+	addr = read_int(ptr, &len, &ptr, 16);
+	expect_char(',', ptr, len);
+
+	/* Get amount. */
+	amnt = read_int(ptr, &len, &ptr, 16);
+	expect_char(':', ptr, len);
+
+	/* If 0, just send that we support M command and quit. */
+	if (!amnt) {
+		send_gdb_ok();
+		return (0);
+	}
+
+	/* Decode hex buffer to binary. */
+	memory = decode_hex(ptr, amnt);
+
+	/* Write into VM memory. */
+	host = mm_vm2host(addr);
+	if (!host) {
+		send_gdb_error();
+		return (-1);
+	}
+
+	memcpy(host, memory, amnt);
+	send_gdb_ok();
+	return (0);
+}
+
+/**
+ * @brief Handles the 'write register (P)' GDB command;
+ *
+ * @param uc   Unicorn engine context.
+ * @param buff Buffer to be parsed.
+ * @param len  Buffer length.
+ *
+ * @return Returns 0 if the command is valid, -1 otherwise.
+ */
+static int handle_gdb_write_register(uc_engine *uc, const char *buff,
+	size_t len)
+{
+	uint32_t reg_num, reg_val;
+	const char *ptr, *dec;
+
+	ptr = buff;
+
+	/* Skip 'P'. */
+	expect_char('P', ptr, len);
+	reg_num = read_int(ptr, &len, &ptr, 16);
+	expect_char('=', ptr, len);
+
+	/* Decode 4-byte register value. */
+	dec = decode_hex(ptr, 4);
+	memcpy(&reg_val, dec, 4);
+
+	/* Convert from big-endian (GDB sends BE for PPC). */
+	reg_val = ntohl(reg_val);
+
+	/* Validate register number against our register table. */
+	if (reg_num >= PPC_REGS_AMNT) {
+		send_gdb_error();
+		return (-1);
+	}
+
+	if (uc_reg_write(uc, regs_to_be_read[reg_num], &reg_val) != UC_ERR_OK) {
+		send_gdb_error();
+		return (-1);
+	}
+
+	send_gdb_ok();
+	return (0);
+}
+
+/**
  * @brief Handles the single-step command from GDB, i.e., add (or not)
  * a UC hook in order to stop in the next execution.
  * @param uc   Unicorn engine.
@@ -681,6 +772,14 @@ static int handle_gdb_cmd(uc_engine *uc, struct gdb_handle *gh, int *cont)
 	/* Continue. */
 	case 'c':
 		handle_gdb_continue(uc, cont);
+		break;
+	/* Write memory. */
+	case 'M':
+		handle_gdb_write_memory(uc, gh->cmd_buff, sizeof gh->cmd_buff);
+		break;
+	/* Write register. */
+	case 'P':
+		handle_gdb_write_register(uc, gh->cmd_buff, sizeof gh->cmd_buff);
 		break;
 	/* Insert breakpoint. */
 	case 'Z':

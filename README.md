@@ -223,7 +223,7 @@ edge cases too.
 | 688            | vmgetinfo          | Partial               |
 | 825            | access             | Implemented           |
 | 827            | kfcntl             | Partial               |
-| 837            | __loadx            | Stub                  |
+| 837            | __loadx            | Partial               |
 | 848            | accessx            | Partial/Good enough   |
 
 **Note:** The syscall number is for informational purposes only,
@@ -244,7 +244,6 @@ Considering this, the following limitations apply:
 - No 64-bit support and there never will be.
 - No thread support (and probably never will be either: there are simply
 *too many* other things I need to address first).
-- No ctors/dtors (yet): C++ programs probably won't work yet.
 
 ## Debugging
 `aix-user` provides a built-in GDB server for debugging AIX binaries. This 

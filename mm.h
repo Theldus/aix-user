@@ -10,6 +10,14 @@
 #include <unicorn/unicorn.h>
 #include "util.h"
 
+struct mm_region {
+	const char *description;
+	u8 *host_base;
+	u32 vm_base;
+	u32 prot;
+	u32 size;
+};
+
 /* Memory Management. */
 #define PAGE_SIZE 4096
 #define PAGE_SHIFT  12
@@ -75,5 +83,8 @@ void mm_init_stack(int argc, const char **argv, const char **envp);
 /* Returns the host-equivalent address for a given Unicorn
  * memory address. */
 void *mm_vm2host(u32 vaddr);
+
+/* Gets the current mapped region ofr the VM address. */
+const struct mm_region *mm_find_region(u32 vaddr);
 
 #endif /* MM_H. */

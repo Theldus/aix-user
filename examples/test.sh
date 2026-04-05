@@ -90,6 +90,7 @@ do_test "sbrk" 0
 do_script_test "statx" 0
 do_script_test "getdirent" 0
 do_test_without_out_comparison "time" 0 "$(date +%s)"
+do_test "rtinit" 0
 
 if [ "${any_error}" -eq 1 ]; then
 	echo "One or more tests have failed!"

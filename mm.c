@@ -47,32 +47,38 @@ char *curr_heap;
  * between the host/vm memory.
  */
 #define MM_REGIONS 32
-static struct mm_region {
-	const char *description;
-	u8 *host_base;
-	u32 vm_base;
-	u32 prot;
-	u32 size;
-} regions [MM_REGIONS];
-
+static struct mm_region regions [MM_REGIONS];
 static int region_idx;
+
+/**
+ * @brief For a given VM address, returns the mapped region for that
+ * address.
+ *
+ * @param vaddr Target address to search.
+ *
+ * @return If success, returns the region found, NULL otherwise.
+ */
+const struct mm_region *mm_find_region(u32 vaddr) {
+	const struct mm_region *r;
+	int i;
+	for (i = 0; i < region_idx; i++) {
+		r = &regions[i];
+		if (vaddr >= r->vm_base && (vaddr - r->vm_base) < r->size)
+			return r;
+	}
+	return NULL;
+}
 
 /**
  * @brief For a given Unicorn's address, returns the equivalent host address.
  * @param vaddr Unicorn memory address.
  * @return Host equivalent address.
  */
-void *mm_vm2host(u32 vaddr)
-{
-	struct mm_region *r;
-	u32 off;
-	int i;
-	for (i = 0; i < region_idx; i++) {
-		r = &regions[i];
-		if (vaddr >= r->vm_base && (off = (vaddr - r->vm_base)) < r->size)
-			return (r->host_base + off);
-	}
-	return NULL;
+void *mm_vm2host(u32 vaddr) {
+	const struct mm_region *r = mm_find_region(vaddr);
+	if (!r)
+		return NULL;
+	return r->host_base + (vaddr - r->vm_base);
 }
 
 /**
@@ -192,6 +198,63 @@ static void mm_alloc_section_region(struct loaded_coff *lcoff,
 	memcpy(new_buff + (vaddr - aligned), sec_buff, copy_size);
 	mm_alloc_region(aligned, size, new_buff, prot, desc);
 	*bump += size;
+}
+
+/**
+ * @brief Copy file headers in the space between the text region base address
+ * and the beginning of the .text section.
+ *
+ * AIX needs to inspect the XCOFF headers as part of the setup for
+ * the ctors/dtors routines, and thus, we need to also copy to
+ * memory the executable headers right before the .text region.
+ *
+ * @param lcoff Loaded COFF structure with parsed XCOFF data.
+ *
+ * @return Returns 0 if success, -1 otherwise.
+ */
+static int mm_copy_headers(const struct loaded_coff *lcoff)
+{
+	const struct mm_region *r;
+	u32 gap;
+
+	r = mm_find_region(lcoff->text_start);
+	if (!r)
+		errx(1, "Unable to find region for address: %x\n", lcoff->text_start);
+
+	gap = lcoff->text_start - r->vm_base;
+	if (!gap) {
+		warn("Gap not found for address %x, execution might have issues...\n",
+			lcoff->text_start);
+		return -1;
+	}
+	memcpy(r->host_base, lcoff->xcoff.buff, gap);
+	return 0;
+}
+
+/**
+ * @brief AIX specs the presence of the .loader section right after the
+ * .text section, so this function finds and copies this region into
+ * the right place.
+ *
+ * @param lcoff Loaded COFF structure with parsed XCOFF data.
+ *
+ * @return Always 0.
+ */
+static int mm_copy_loader(const struct loaded_coff *lcoff)
+{
+	const struct xcoff_sec_hdr32 *sec_loader;
+	const struct mm_region *r;
+
+	r = mm_find_region(lcoff->text_start);
+	if (!r)
+		errx(1, "Unable to find region for address: %x\n", lcoff->text_start);
+
+	sec_loader = &lcoff->xcoff.secs[lcoff->xcoff.aux.o_snloader-1];
+	memcpy(
+		r->host_base      + sec_loader->s_scnptr,
+		lcoff->xcoff.buff + sec_loader->s_scnptr,
+		sec_loader->s_size);
+	return 0;
 }
 
 /**
@@ -334,7 +397,7 @@ static void mm_alloc_memory(
 	mm_alloc_section_region(lcoff,
 		aux->o_sntext,
 		lcoff->text_start,
-		lcoff->text_start + aux->o_tsize,
+		(lcoff->text_start & ~(PAGE_SIZE - 1)) + text_map_size,
 		aux->o_tsize,
 		&next_text_base,
 		UC_PROT_READ|UC_PROT_EXEC, ".text");
@@ -346,6 +409,9 @@ static void mm_alloc_memory(
 		aux->o_dsize,
 		&next_data_base,
 		UC_PROT_READ|UC_PROT_WRITE, ".data/.bss");
+
+	mm_copy_headers(lcoff);
+	mm_copy_loader(lcoff);
 }
 
 /**
@@ -369,13 +435,27 @@ void mm_alloc_coff_memory(
 	u32 bss_vaddr,  u32 bss_size,
 	struct loaded_coff *lcoff, int is_exe)
 {
+	struct xcoff_sec_hdr32 *sec_loader, *sec_text;
 	u32 text_runtime, data_runtime, bss_runtime;
 	u32 text_delta, data_delta, bss_delta;
 	u32 tsize, dsize;
 	u32 data_end;
+	int i;
 
 	/* Validate .data and .bss layout. */
 	validate_data_bss_layout(data_vaddr, data_size, bss_vaddr, bss_size);
+
+	/*
+	 * Validate .loader section: .loader must be always *after* the
+	 * .text section, so we can blindly use the loader start+size
+	 * in order to have the text region size.
+	 */
+	sec_loader = &lcoff->xcoff.secs[lcoff->xcoff.aux.o_snloader-1];
+	sec_text   = &lcoff->xcoff.secs[lcoff->xcoff.aux.o_sntext-1];
+	tsize      = sec_loader->s_scnptr + sec_loader->s_size;
+
+	if (sec_loader->s_scnptr < sec_text->s_scnptr+sec_text->s_size)
+		errx(1, ".loader *must not* start before .text!!\n");
 
 	if (is_exe) {
 		/* Validate .text is in expected range. */
@@ -394,15 +474,11 @@ void mm_alloc_coff_memory(
 		text_runtime = text_vaddr;
 		data_runtime = data_vaddr;
 		bss_runtime  = bss_vaddr;
-		tsize        = text_size;
 		dsize        = data_size;
 		text_delta   = data_delta = bss_delta = 0;
+
 	} else {
 		/* Calculate aligned sizes. */
-		tsize = ALIGN_UP(text_size);
-		if (tsize < text_size)
-			errx(1, ".text size overflow after alignment!\n");
-
 		if (safe_add_u32(bss_vaddr, bss_size, &data_end))
 			errx(1, ".bss causes address overflow!\n");
 
@@ -411,8 +487,16 @@ void mm_alloc_coff_memory(
 		if (dsize < (data_end - data_vaddr))
 			errx(1, ".data+.bss size overflow!\n");
 
-		/* Get runtime addresses from bump allocator. */
-		text_runtime = next_text_base;
+		/*
+		 * Get runtime addresses from bump allocator.
+		 * We're adding '+ s_scnptr' here so the start address points to
+		 * the .text start, instead of the memory region, this give us
+		 * a room to copy the binary header in that gap.
+		 *
+		 * The 'text_vaddr' provided by the exec alresdy have this gap, so
+		 * thats why i'm only adding this here.
+		 */
+		text_runtime = next_text_base + sec_text->s_scnptr;
 		data_runtime = next_data_base;
 
 		/* Calculate separate deltas for each section. */

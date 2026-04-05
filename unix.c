@@ -176,6 +176,7 @@ static void registers_init(uc_engine *uc)
 	static int regs_to_write[24];
 	static void *vals[24];
 	u32 reg1, reg2;
+	u32 modinit;
 	uc_err err;
 	int i;
 
@@ -194,6 +195,10 @@ static void registers_init(uc_engine *uc)
 	for (i = 0; i < 23; i++)
 		vals[i] = &reg1;
 	vals[23] = &reg2;
+
+	/* Module init flags: run module initialization */
+	modinit = 0x88;
+	uc_reg_write(uc, UC_PPC_REG_27, &modinit);
 
 	if ((err = uc_reg_write_batch(uc, regs_to_write, vals, 24)))
 		errx(1, "Unable to set default value regs: (%s)\n", uc_strerror(err));

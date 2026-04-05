@@ -38,4 +38,6 @@ struct loaded_coff {
 extern struct loaded_coff *load_xcoff_file(uc_engine *uc, const char *bin,
 	const char *member, int is_exe);
 
+extern struct loaded_coff *loaded_modules;
+
 #endif /* LOADER_H. */

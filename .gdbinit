@@ -1,6 +1,7 @@
 set style address foreground cyan
 set confirm off
 set endian big
+set tui mouse off
 target remote localhost:1234
 set history save on
 set output-radix 16

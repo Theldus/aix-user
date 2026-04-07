@@ -43,9 +43,13 @@ static void usage(const char *prgname)
 	fprintf(stderr,
 		"Options:\n"
 		"  -L <path> Set library search path (default: current directory)\n"
+		"            Env var: AIX_USER_LIB_PATH\n\n"
 		"  -s        Enable syscall trace\n"
+		"            Env var: AIX_USER_SYS_TRACE\n\n"
 		"  -l        Enable loader/binder/milicode/syscall trace\n"
+		"            Env var: AIX_USER_LOADER_TRACE\n\n"
 		"  -m        Enable memory subsystem trace\n"
+		"            Env var: AIX_USER_TRACE_MEM\n\n"
 		"  -d        Enable GDB server\n"
 		"  -g <port> GDB server port (default: 1234)\n"
 		"  -h        Show this help\n\n"
@@ -54,6 +58,23 @@ static void usage(const char *prgname)
 		"  %s -s -l ./my_aix_program\n",
 		prgname, prgname);
 	exit(EXIT_FAILURE);
+}
+
+/**
+ * @brief Parse env-var arguments
+ * This is particularly useful while using binfmt
+ */
+static void parse_env_args(void)
+{
+	const char *env;
+	if ((env = getenv("AIX_USER_LIB_PATH")) && strcmp("", env))
+		args.lib_path = env;
+	if ((env = getenv("AIX_USER_SYS_TRACE")) && strcmp("", env))
+		args.trace_syscall = 1;
+	if ((env = getenv("AIX_USER_LOADER_TRACE")) && strcmp("", env))
+		args.trace_loader = 1;
+	if ((env = getenv("AIX_USER_TRACE_MEM")) && strcmp("", env))
+		args.trace_memory = 1;
 }
 
 /**
@@ -129,6 +150,7 @@ int main(int argc, char **argv, char **envp)
 	uc_err err;
 
 	/* Parse command-line arguments. */
+	parse_env_args();
 	parse_args(&argc, &argv);
 	program = argv[0];
 

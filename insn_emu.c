@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 /*
@@ -84,6 +84,41 @@ static int emu_cmpb(uc_engine *uc, u32 insn, u32 pc)
 }
 
 /**
+ * @brief fcfid FRT,FRB
+ * Floating Convert From Integer Doubleword: convert 64-bit signed
+ * integer in FRB to double-precision float and store in FRT.
+ *
+ * @param uc   Unicorn context.
+ * @param insn Instruction to emulate.
+ * @param pc   Program counter.
+ *
+ * @note The PowerISA v2.04 states that these registers are also
+ * affected, i'm not touching any of them her:
+ *   FPRF FR FI
+ *   FX XX
+ *   CR1
+ */
+static int emu_fcfid(uc_engine *uc, u32 insn, u32 pc)
+{
+	uint64_t ival;
+	double result;
+	u32 frt = (insn >> 21) & 0x1F;
+	u32 frb = (insn >> 11) & 0x1F;
+
+	/* Read the 64-bit integer value from FRB */
+	uc_reg_read(uc, UC_PPC_REG_FPR0 + frb, &ival);
+
+	/* Convert signed 64-bit integer to double */
+	result = (double)(int64_t)ival;
+
+	/* Write result back as 64-bit IEEE 754 double */
+	uc_reg_write(uc, UC_PPC_REG_FPR0 + frt, &result);
+
+	INSN("(%08x) fcfid(f%d,f%d) = %f\n", pc,frt,frb,result);
+	return 0;
+}
+
+/**
  * @brief Main interrupt hook for instruction emulation
  * @param uc    Unicorn context.
  * @param intno Exception/interrup number.
@@ -112,8 +147,12 @@ static void hook_illegal_insn(uc_engine *uc, u32 intno, void *user_data)
 
 	/* Dispatch to appropriate emulator */
 	if (opcode == 31 && subop == 508) {
-		  /* cmpb - Compare Bytes */
+		/* cmpb - Compare Bytes */
 		if (emu_cmpb(uc, insn, pc) == 0)
+			return;
+	} else if (opcode == 63 && subop == 846) {
+		/* fcfid - Floating Convert From Integer Doubleword */
+		if (emu_fcfid(uc, insn, pc) == 0)
 			return;
 	}
 

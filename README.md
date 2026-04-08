@@ -168,11 +168,12 @@ binary is wanted, new features are brought in to support that specific binary.
 binaries that works but might have some hidden issues due to features
 not-implemented, and etc:
 
-| Binary      | Reason                                                     |
-|:-----------:|:----------------------------------------------------------:|
-| as          | `_sigaction` not-implemented yet                           |
-| find        | `_sigaction`, `execve` and `kfork` not-implemented yet     |
-| sort        | `_sigaction` not-implemented yet                           |
+| Binary      | Reason                                                         |
+|:-----------:|:--------------------------------------------------------------:|
+| as          | `_sigaction` not-implemented yet                               |
+| awk         | `_sigaction`,`__ksetjmp`, and `sigprocmask` not-implemented yet|
+| find        | `_sigaction`, `execve` and `kfork` not-implemented yet         |
+| sort        | `_sigaction` not-implemented yet                               |
 
 [examples/]: examples/
 

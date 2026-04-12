@@ -142,6 +142,10 @@ static struct sys_table_entry sys_table[] = {
 	{"kill",           aix_kill},
 	{"_nsleep",        aix__nsleep},
 	{"_clock_nanosleep", aix__clock_nanosleep},
+	{"truncate",       aix_truncate},
+	{"ktruncate",      aix_ktruncate},
+	{"ftruncate",      aix_ftruncate},
+	{"kftruncate",     aix_kftruncate},
 };
 
 /**

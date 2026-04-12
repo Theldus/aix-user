@@ -82,5 +82,9 @@ extern int aix_unamex(uc_engine *uc);
 extern int aix_kill(uc_engine *uc);
 extern int aix__nsleep(uc_engine *uc);
 extern int aix__clock_nanosleep(uc_engine *uc);
+extern int aix_truncate(uc_engine *uc);
+extern int aix_ktruncate(uc_engine *uc);
+extern int aix_ftruncate(uc_engine *uc);
+extern int aix_kftruncate(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

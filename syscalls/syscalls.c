@@ -146,6 +146,9 @@ static struct sys_table_entry sys_table[] = {
 	{"ktruncate",      aix_ktruncate},
 	{"ftruncate",      aix_ftruncate},
 	{"kftruncate",     aix_kftruncate},
+	{"mmap",           aix_mmap},
+	{"kmmap",          aix_kmmap},
+	{"munmap",         aix_munmap},
 };
 
 /**

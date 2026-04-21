@@ -21,6 +21,7 @@ struct mm_region {
 /* Memory Management. */
 #define PAGE_SIZE 4096
 #define PAGE_SHIFT  12
+#define PAGE_MASK   (~(PAGE_SIZE - 1))
 #define ALIGN_UP(x) (((x) + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1))
 
 #define EXEC_TEXT_SIZE  0x1000000  /* 16 MiB. */
@@ -50,9 +51,13 @@ struct mm_region {
 #define STACK_ADDR 0x30000000
 #define STACK_SIZE (32ULL*1024*1024)  /* bytes. */
 
-/* Heap. */
+/* Dynamic memory: (s)brk/mmap/... */
 #define HEAP_ADDR 0x40000000 /* Starts at 1GiB. */ 
-#define HEAP_SIZE 0xC0000000 /* 3GiB.           */
+#define HEAP_SIZE 0x40000000 /* 1GiB.           */
+#define MMAP_ANON_ADDR 0x80000000 /* Starts at 2GiB. */
+#define MMAP_ANON_SIZE 0x40000000 /* 1GiB.           */
+#define MMAP_FILE_ADDR 0xC0000000 /* Starts at 3GiB. */
+#define MMAP_FILE_SIZE 0x40000000 /* 1GiB.           */
 
 /* Unix function descriptors. */
 #define UNIX_DESC_ADDR 0x0F000000  /* Descriptor heap */
@@ -85,6 +90,16 @@ void mm_init_stack(int argc, const char **argv, const char **envp);
 void *mm_vm2host(u32 vaddr);
 
 /* Gets the current mapped region ofr the VM address. */
-const struct mm_region *mm_find_region(u32 vaddr);
+struct mm_region *mm_find_region(u32 vaddr);
+
+/* Allocates a new region for the VM. */
+void mm_alloc_region(u32 vm_base, u32 size, void *host_base, u32 prot,
+	const char *desc);
+
+/* Deallocate an existing region. */
+#define MM_DEALLOC_NONE   0
+#define MM_DEALLOC_FREE   1
+#define MM_DEALLOC_MUNMAP 2
+int mm_dealloc_region(u32 vaddr, int dealloc_type);
 
 #endif /* MM_H. */

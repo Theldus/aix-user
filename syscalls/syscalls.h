@@ -86,5 +86,8 @@ extern int aix_truncate(uc_engine *uc);
 extern int aix_ktruncate(uc_engine *uc);
 extern int aix_ftruncate(uc_engine *uc);
 extern int aix_kftruncate(uc_engine *uc);
+extern int aix_mmap(uc_engine *uc);
+extern int aix_kmmap(uc_engine *uc);
+extern int aix_munmap(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

@@ -40,15 +40,17 @@ static u32 next_data_base = DATA_START + EXEC_DATA_SIZE;
 char *heap_host;
 char *curr_heap;
 
+/* Mmap external. */
+extern void aix_mmap_init(void);
+
 /* Region definition structure
  *
  * Each 'portion' of memory will be allocated as a 'region', this way,
  * aix-user can easily track all the memory layout and relationship
  * between the host/vm memory.
  */
-#define MM_REGIONS 32
+#define MM_REGIONS 64
 static struct mm_region regions [MM_REGIONS];
-static int region_idx;
 
 /**
  * @brief For a given VM address, returns the mapped region for that
@@ -58,10 +60,10 @@ static int region_idx;
  *
  * @return If success, returns the region found, NULL otherwise.
  */
-const struct mm_region *mm_find_region(u32 vaddr) {
-	const struct mm_region *r;
+struct mm_region *mm_find_region(u32 vaddr) {
+	struct mm_region *r;
 	int i;
-	for (i = 0; i < region_idx; i++) {
+	for (i = 0; i < MM_REGIONS; i++) {
 		r = &regions[i];
 		if (vaddr >= r->vm_base && (vaddr - r->vm_base) < r->size)
 			return r;
@@ -123,10 +125,15 @@ static const char *format_size(u32 size) {
  *                  into Unicorn.
  * @param desc      String description of the to-be mapped memory region.
  */
-static void mm_alloc_region(u32 vm_base, u32 size, void *host_base, u32 prot,
+void mm_alloc_region(u32 vm_base, u32 size, void *host_base, u32 prot,
 	const char *desc)
 {
+	int region_idx;
 	uc_err err;
+
+	for (region_idx = 0; region_idx < MM_REGIONS; region_idx++)
+		if (!regions[region_idx].size)
+			break;
 
 	if (region_idx >= MM_REGIONS)
 		errx(1, "Unable to allocate region: %x/%d!\n", vm_base, size);
@@ -144,7 +151,6 @@ static void mm_alloc_region(u32 vm_base, u32 size, void *host_base, u32 prot,
 	regions[region_idx].prot        = prot;
 	regions[region_idx].host_base   = host_base;
 	regions[region_idx].description = desc;
-	region_idx++;
 
 	MM("Map: 0x%08x 0x%016" PRIxPTR" %s %s (%s)\n",
 		vm_base, (uintptr_t)host_base, format_size(size), format_perms(prot),
@@ -158,6 +164,36 @@ static void mm_alloc_region(u32 vm_base, u32 size, void *host_base, u32 prot,
 			errx(1, "Unable to map_ptr region: reason: (%s)\n",
 				uc_strerror(err));
 	}
+}
+
+/**
+ * @brief Deallocates a given region specified by the virtual address @p vaddr.
+ *
+ * @param vaddr        VM base address of the region to be deallocated.
+ * @param dealloc_type Deallocation type: 0 for no-deallocation, 1 for free(),
+ *                     2 for munmap.
+ * @return Returns 0 if success, -1 otherwise.
+ */
+int mm_dealloc_region(u32 vaddr, int dealloc_type)
+{
+	struct mm_region *r = mm_find_region(vaddr);
+	if (!r)
+		return -1;
+
+	uc_mem_unmap(g_uc, r->vm_base, r->size);
+	if (dealloc_type) {
+		if (dealloc_type == MM_DEALLOC_FREE)
+			free(r->host_base);
+		else if (dealloc_type == MM_DEALLOC_MUNMAP)
+			munmap(r->host_base, r->size);
+	}
+
+	r->vm_base = 0;
+	r->size    = 0;
+	r->prot    = 0;
+	r->host_base = NULL;
+	r->description = NULL;
+	return 0;
 }
 
 /**
@@ -263,17 +299,22 @@ static int mm_copy_loader(const struct loaded_coff *lcoff)
  *
  * @return Always 0.
  */
-static int mm_init_heap(void) {
+static int mm_init_heap(void)
+{
+	/* -------------- SBRK/BRK heap addresses. -------------- */
 	heap_host = mmap(NULL, HEAP_SIZE, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	if (heap_host == MAP_FAILED)
-		errx(1, "Unable to allocate heap memory, aborting...\n");
-
+		errx(1, "Unable to allocate sbrk/brk memory, aborting...\n");
 	curr_heap = heap_host;
 
-	/* Register in region table but don't map into Unicorn yet:
-	 * sbrk will map the used portion on first call. */
-	mm_alloc_region(HEAP_ADDR, HEAP_SIZE, heap_host,
-		UC_PROT_NONE, "heap");
+	/*
+	 * Register in region table but don't map into Unicorn yet:
+	 * sbrk will map the used portion on first call.
+	 */
+	mm_alloc_region(HEAP_ADDR, HEAP_SIZE, heap_host, UC_PROT_NONE, "sbrk (heap)");
+
+	/* -------------- MMAP heap addresses. -------------- */
+	aix_mmap_init();
 	return 0;
 }
 

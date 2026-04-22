@@ -1,0 +1,114 @@
+
+[TEST #0] First 4KiB anonymous (ptr1)
+  addr=0  len=4096  prot=0x3  flags=0x12  fd=-1  off=0
+  -> Allocated at 80000000
+  -> Zero-fill check: [PASS] (4096 bytes)
+  -> Write-back check: [PASS] (4096 bytes)
+  -> Allocate result: [PASS]
+
+[TEST #1] 8KiB anonymous (ptr2)
+  addr=0  len=8192  prot=0x3  flags=0x12  fd=-1  off=0
+  -> Allocated at 80001000
+  -> Zero-fill check: [PASS] (8192 bytes)
+  -> Write-back check: [PASS] (8192 bytes)
+  -> Allocate result: [PASS]
+
+[TEST #2] Second 4KiB anonymous (ptr3)
+  addr=0  len=4096  prot=0x3  flags=0x12  fd=-1  off=0
+  -> Allocated at 80003000
+  -> Zero-fill check: [PASS] (4096 bytes)
+  -> Write-back check: [PASS] (4096 bytes)
+  -> Allocate result: [PASS]
+
+[TEST #3] munmap (free 8KiB (ptr2))
+  addr=80001000  len=8192
+  -> Munmap result: [PASS]
+
+[TEST #4] Recycle ptr2 slot (ptr4 should land at ptr2)
+  addr=0  len=4096  prot=0x3  flags=0x12  fd=-1  off=0
+  -> Allocated at 80001000
+  -> Zero-fill check: [PASS] (4096 bytes)
+  -> Write-back check: [PASS] (4096 bytes)
+  -> Allocate result: [PASS]
+  -> Address reuse: [PASS]
+
+[TEST #5] MAP_SHARED anonymous 4KiB
+  addr=0  len=4096  prot=0x3  flags=0x11  fd=-1  off=0
+  -> Allocated at 80002000
+  -> Zero-fill check: [PASS] (4096 bytes)
+  -> Write-back check: [PASS] (4096 bytes)
+  -> Allocate result: [PASS]
+
+[TEST #6] munmap (free MAP_SHARED anon)
+  addr=80002000  len=4096
+  -> Munmap result: [PASS]
+
+[TEST #7] MAP_FIXED at ptr5
+  addr=80028000  len=4096  prot=0x3  flags=0x112  fd=-1  off=0
+  -> Allocated at 80028000
+  -> Zero-fill check: [PASS] (4096 bytes)
+  -> Write-back check: [PASS] (4096 bytes)
+  -> Allocate result: [PASS]
+  -> MAP_FIXED honored: [PASS]
+
+[TEST #8] munmap (free MAP_FIXED region)
+  addr=80028000  len=4096
+  -> Munmap result: [PASS]
+
+[TEST #9] MAP_FIXED over allocated page (must fail)
+  addr=80000000  len=4096  prot=0x3  flags=0x112  fd=-1  off=0
+  -> Allocate result: [PASS] (expected failure, errno=12: Not enough space)
+
+[TEST #10] munmap (munmap NULL address (must fail))
+  addr=0  len=4096
+  -> Munmap result: [PASS] (expected failure, errno=22: Invalid argument)
+
+[TEST #11] munmap (munmap unaligned address (must fail))
+  addr=80000011  len=4096
+  -> Munmap result: [PASS] (expected failure, errno=22: Invalid argument)
+
+[TEST #12] munmap (munmap address below mmap region (must fail))
+  addr=1000  len=4096
+  -> Munmap result: [PASS] (expected failure, errno=22: Invalid argument)
+
+[TEST #13] file-backed RO mapping (8KiB, pattern 0x42)
+  addr=0  len=8192  prot=0x1  flags=0x2  fd=6  off=0
+  -> Allocated at c0000000
+  -> Allocate result: [PASS]
+  -> File-backed RO content: [PASS]
+
+[TEST #14] munmap (free file RO mapping)
+  addr=c0000000  len=8192
+  -> Munmap result: [PASS]
+
+[TEST #15] file-backed RW mapping (4KiB)
+  addr=0  len=4096  prot=0x3  flags=0x1  fd=6  off=0
+  -> Allocated at c0000000
+  -> Write-back check: [PASS] (4096 bytes)
+  -> Allocate result: [PASS]
+
+[TEST #16] munmap (free file RW mapping)
+  addr=c0000000  len=4096
+  -> Munmap result: [PASS]
+  -> File-backed RW write-back: [PASS]
+
+[TEST #17] mmap64 at offset 4096
+  -> mmap64 content: [PASS]
+
+[TEST #18] munmap (free mmap64 region)
+  addr=c0000000  len=4096
+  -> Munmap result: [PASS]
+
+[TEST #19] munmap (free ptr1)
+  addr=80000000  len=4096
+  -> Munmap result: [PASS]
+
+[TEST #20] munmap (free ptr3)
+  addr=80003000  len=4096
+  -> Munmap result: [PASS]
+
+[TEST #21] munmap (free ptr4)
+  addr=80001000  len=4096
+  -> Munmap result: [PASS]
+
+===== All tests passed (22 total) =====

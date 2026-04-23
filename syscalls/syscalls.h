@@ -91,5 +91,7 @@ extern int aix_kmmap(uc_engine *uc);
 extern int aix_munmap(uc_engine *uc);
 extern int aix_kpread(uc_engine *uc);
 extern int aix_kpwrite(uc_engine *uc);
+extern int aix_fchmod(uc_engine *uc);
+extern int aix_fchown(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

@@ -149,6 +149,8 @@ static struct sys_table_entry sys_table[] = {
 	{"mmap",           aix_mmap},
 	{"kmmap",          aix_kmmap},
 	{"munmap",         aix_munmap},
+	{"kpread",         aix_kpread},
+	{"kpwrite",        aix_kpwrite},
 };
 
 /**

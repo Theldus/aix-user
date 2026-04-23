@@ -188,7 +188,9 @@ edge cases too.
 |:--------------:|:------------------:|:---------------------:|
 | 5              | close              | Implemented           |
 | 7              | kread              | Implemented           |
+| 9              | kpread             | Implemented           |
 | 10             | kwrite             | Implemented           |
+| 12             | kpwrite            | Implemented           |
 | 17             | _clock_nanosleep   | Implemented           |
 | 18             | _nsleep            | Implemented           |
 | 107            | kill               | Implemented           |

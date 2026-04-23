@@ -52,6 +52,8 @@ OBJS += syscalls/kill.o
 OBJS += syscalls/nanosleep.o
 OBJS += syscalls/truncate.o
 OBJS += syscalls/mmap.o
+OBJS += syscalls/kpread.o
+OBJS += syscalls/kpwrite.o
 
 # Pretty print
 Q := @

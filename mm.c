@@ -18,6 +18,7 @@
 #include "util.h"
 #include "loader.h"
 #include "unix.h"
+#include "aix_mmap.h"
 
 /**
  * Debug logging macro for the memory subsystem.
@@ -39,9 +40,6 @@ static u32 next_data_base = DATA_START + EXEC_DATA_SIZE;
  */
 char *heap_host;
 char *curr_heap;
-
-/* Mmap external. */
-extern void aix_mmap_init(void);
 
 /* Region definition structure
  *

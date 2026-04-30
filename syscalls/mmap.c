@@ -12,6 +12,7 @@
 #include "mm.h"
 #include "unix.h"
 #include "syscalls.h"
+#include "aix_mmap.h"
 
 /**
  * aix-user mmap routines:
@@ -35,25 +36,6 @@
  * to handle this at the 'page-level': handling page-faults and etc, as this
  * greatly complicates all the memory management we have until now.
  */
-
-/*
- * Perms.
- * These perms have the exact same values on Linux, so no need
- * to translate them.
- */
-#define AIX_PROT_NONE  0x0
-#define AIX_PROT_READ  0x1
-#define AIX_PROT_WRITE 0x2
-#define AIX_PROT_EXEC  0x4
-
-/* Flags. */
-#define AIX_MAP_FILE      0x0   /* Maps an fd into an address space.       */
-#define AIX_MAP_VARIABLE  0x0   /* Selects an address if 'address' is NULL or
-                                   if the chosen address cannot be mapped. */
-#define AIX_MAP_SHARED    0x1   /* Shared memory.                          */
-#define AIX_MAP_PRIVATE   0x2   /* Private into the process address space. */
-#define AIX_MAP_ANONYMOUS 0x10  /* Standard allocation, 'malloc()'-like.   */
-#define AIX_MAP_FIXED     0x100 /* Map into exact address. */
 
 /**
  * Buffers:
@@ -425,26 +407,16 @@ int aix_mmap(uc_engine *uc)
 }
 
 /**
- * @brief munmap(2) AIX syscall handler.
+ * @brief Main entrypoint for munmap.
  *
- * AIX calling convention:
- *   r3 = address
- *   r4 = size
+ * @param addr Page-aligned address to be munmapped.
+ * @param size Memory size to be munmapped.
  *
- * Return value (in r3):
- *   On success, returns 0, -1 otherwise (with errno set).
- *
- * @note Munmapping of file descriptors do not behave identical to POSIX:
- * contrary to the standards, its not possible to partially munmap a previous
- * allocated region, only the entire file.
- *
- * Since this (I expect) is a very edge case, I'm not implementing this.
+ * @return Returns 0 on success, -1 on error (errno set).
  */
-int aix_munmap(uc_engine *uc)
+int aix_do_munmap(u32 addr, u32 size)
 {
 	int ret  = -1;
-	u32 addr = read_1st_arg();
-	u32 size = read_2nd_arg();
 	u32 spage; /* Initial page, 0-based. */
 	u32 npage; /* Numebr of pages.       */
 	int is_file;
@@ -498,9 +470,33 @@ int aix_munmap(uc_engine *uc)
 		mmap_files[i].vm_base   = 0;
 		mmap_files[i].size      = 0;
 	}
-
 	ret = 0;
 out:
+	return ret;
+}
+
+/**
+ * @brief munmap(2) AIX syscall handler.
+ *
+ * AIX calling convention:
+ *   r3 = address
+ *   r4 = size
+ *
+ * Return value (in r3):
+ *   On success, returns 0, -1 otherwise (with errno set).
+ *
+ * @note Munmapping of file descriptors do not behave identical to POSIX:
+ * contrary to the standards, its not possible to partially munmap a previous
+ * allocated region, only the entire file.
+ *
+ * Since this (I expect) is a very edge case, I'm not implementing this.
+ */
+int aix_munmap(uc_engine *uc)
+{
+	int ret;
+	u32 addr = read_1st_arg();
+	u32 size = read_2nd_arg();
+	ret = aix_do_munmap(addr, size);
 	TRACE("munmap", "%x, %u", addr, size);
 	return ret;
 }

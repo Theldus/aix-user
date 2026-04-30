@@ -153,6 +153,8 @@ static struct sys_table_entry sys_table[] = {
 	{"kpwrite",        aix_kpwrite},
 	{"fchmod",         aix_fchmod},
 	{"fchown",         aix_fchown},
+	{"shmat",          aix_shmat},
+	{"shmdt",          aix_shmdt},
 };
 
 /**

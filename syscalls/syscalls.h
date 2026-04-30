@@ -93,5 +93,7 @@ extern int aix_kpread(uc_engine *uc);
 extern int aix_kpwrite(uc_engine *uc);
 extern int aix_fchmod(uc_engine *uc);
 extern int aix_fchown(uc_engine *uc);
+extern int aix_shmat(uc_engine *uc);
+extern int aix_shmdt(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

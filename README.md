@@ -168,12 +168,13 @@ binary is wanted, new features are brought in to support that specific binary.
 binaries that works but might have some hidden issues due to features
 not-implemented, and etc:
 
-| Binary      | Reason                                                         |
-|:-----------:|:--------------------------------------------------------------:|
-| as          | `_sigaction` not-implemented yet                               |
-| awk         | `_sigaction`,`__ksetjmp`, and `sigprocmask` not-implemented yet|
-| find        | `_sigaction`, `execve` and `kfork` not-implemented yet         |
-| sort        | `_sigaction` not-implemented yet                               |
+| Binary            | Reason                                                         |
+|:-----------------:|:--------------------------------------------------------------:|
+| as                | `_sigaction` not-implemented yet                               |
+| awk               | `_sigaction`,`__ksetjmp`, and `sigprocmask` not-implemented yet|
+| /usr/ccs/bin/bind | `_sigaction` not-implemented yet                               |
+| find              | `_sigaction`, `execve` and `kfork` not-implemented yet         |
+| sort              | `_sigaction` not-implemented yet                               |
 
 [examples/]: examples/
 
@@ -199,6 +200,7 @@ edge cases too.
 | 149            | _exit              | Implemented           |
 | 174            | appgetrlimit       | Implemented           |
 | 179            | getrlimit64        | Implemented           |
+| 258            | times              | Implemented           |
 | 399            | klseek             | Implemented           |
 | 401            | lseek              | Implemented           |
 | 411            | sys_parm           | Partial               |
@@ -223,6 +225,8 @@ edge cases too.
 | 495            | rmdir              | Implemented           |
 | 497            | unlink             | Implemented           |
 | 481            | statx              | Partial               |
+| 514            | shmdt              | Partial               |
+| 515            | shmat              | Partial               |
 | 542            | read_sysconfig     | Stub                  |
 | 559            | __libc_sbrk        | Implemented           |
 | 560            | sbrk               | Implemented           |

@@ -56,6 +56,7 @@ OBJS += syscalls/kpread.o
 OBJS += syscalls/kpwrite.o
 OBJS += syscalls/fchmod.o
 OBJS += syscalls/fchown.o
+OBJS += syscalls/shmat.o
 
 # Pretty print
 Q := @

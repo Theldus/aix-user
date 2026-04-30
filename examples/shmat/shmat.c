@@ -92,6 +92,8 @@ int main(void)
 	 * pattern, then read and check its size.
 	 * ================================================================*/
 	fd = open("rw_test", O_RDWR|O_CREAT|O_TRUNC, 0644);
+	if (fd < 0)
+		errx(1, "Unable to open rw_test file!\n");
 	buff = shmat(fd, 0, SHM_MAP);
 	if (buff == (char*)-1)
 		errx(1, "Unable to shmat RW file: %d (%s)\n", errno, strerror(errno));

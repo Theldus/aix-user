@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
@@ -92,7 +91,7 @@ int aix_klseek(uc_engine *uc)
 	}
 
 	/* Write resulting offset into offp. */
-	off = htonll(off);
+	off = tobe64(off);
 	memcpy(h_offp, &off, 8);
 
 	ret = 0;

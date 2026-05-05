@@ -8,6 +8,7 @@
 #define UTIL_H
 
 #include <stdint.h>
+#include <arpa/inet.h>
 #include <unicorn/unicorn.h>
 
 struct args {
@@ -39,23 +40,28 @@ typedef  int64_t s64;
 		exit((code));\
 	} while (0)
 
-#define CONV16(field) \
-    do {field = be16toh(field);} while (0)
-#define CONV32(field) \
-    do {field = be32toh(field);} while (0)
-
 /**
  * From StackOverflow:
  *   https://stackoverflow.com/a/28592202
  * Credits goes to @deltamind106, thanks =)
  */
 #if __BIG_ENDIAN__
-#define htonll(x) (x)
-#define ntohll(x) (x)
+#define tobe64(x)   (x)
+#define frombe64(x) (x)
 #else
-#define htonll(x) (((uint64_t)htonl((x)&0xFFFFFFFF)<<32)|htonl((x) >> 32))
-#define ntohll(x) (((uint64_t)ntohl((x)&0xFFFFFFFF)<<32)|ntohl((x) >> 32))
+#define tobe64(x)   (((uint64_t)htonl((x)&0xFFFFFFFF)<<32)|htonl((x) >> 32))
+#define frombe64(x) (((uint64_t)ntohl((x)&0xFFFFFFFF)<<32)|ntohl((x) >> 32))
 #endif
+
+#define tobe32(x)   htonl((x))
+#define frombe32(x) ntohl((x))
+#define tobe16(x)   htons((x))
+#define frombe16(x) ntohs((x))
+
+#define CONV16(field) \
+    do {field = frombe16(field);} while (0)
+#define CONV32(field) \
+    do {field = frombe32(field);} while (0)
 
 extern void register_dump(uc_engine *uc);
 

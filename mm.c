@@ -7,7 +7,6 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <arpa/inet.h>
 #include <inttypes.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -572,7 +571,7 @@ u32 mm_read_u32(u32 vaddr, int *err)
 		warn("Unable to find a mapping from %x!\n", vaddr);
 		return 0;
 	}
-	return htonl(*h_addr);
+	return tobe32(*h_addr);
 }
 
 /**
@@ -592,7 +591,7 @@ int mm_write_u32(u32 vaddr, u32 value)
 		warn("Unable to find a mapping from %x!\n", vaddr);
 		return -1;
 	}
-	*h_addr = htonl(value);
+	*h_addr = tobe32(value);
 	return 0;
 }
 

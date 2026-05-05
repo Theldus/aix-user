@@ -6,7 +6,6 @@
 
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
@@ -63,7 +62,7 @@ int aix_sys_parm(uc_engine *uc)
 			break;
 	}
 
-	a_val = htonll((u64)l_val);
+	a_val = tobe64((u64)l_val);
 	memcpy(h_ptr, &a_val, 8);
 	ret = 0;
 out:

@@ -5,7 +5,6 @@
  */
 
 #include <time.h>
-#include <arpa/inet.h>
 
 #include "unix.h"
 #include "syscalls.h"
@@ -37,8 +36,8 @@ timespec_linux2aix(struct timespec *lin, struct aix_st_timespec *aix)
 		aix->tv_sec++;
 		lin->tv_nsec -= ONE_SEC_NS;
 	}
-	aix->tv_sec  = htonl(aix->tv_sec);
-	aix->tv_nsec = htonl(lin->tv_nsec);
+	aix->tv_sec  = tobe32(aix->tv_sec);
+	aix->tv_nsec = tobe32(lin->tv_nsec);
 }
 
 /**
@@ -73,8 +72,8 @@ int aix__nsleep(uc_engine *uc)
 		goto out;
 	}
 
-	linux_dur.tv_sec  = ntohl(aix_dur->tv_sec);
-	linux_dur.tv_nsec = ntohl(aix_dur->tv_nsec);
+	linux_dur.tv_sec  = frombe32(aix_dur->tv_sec);
+	linux_dur.tv_nsec = frombe32(aix_dur->tv_nsec);
 
 	if ((ret = nanosleep(&linux_dur, &linux_rem)) < 0) {
 		unix_set_conv_errno(errno);
@@ -148,8 +147,8 @@ int aix__clock_nanosleep(uc_engine *uc)
 			goto out;
 	}
 
-	linux_dur.tv_sec  = ntohl(aix_dur->tv_sec);
-	linux_dur.tv_nsec = ntohl(aix_dur->tv_nsec);
+	linux_dur.tv_sec  = frombe32(aix_dur->tv_sec);
+	linux_dur.tv_nsec = frombe32(aix_dur->tv_nsec);
 
 	if ((ret = clock_nanosleep(li_cid, li_flags, &linux_dur, &linux_rem))) {
 		unix_set_conv_errno(errno);

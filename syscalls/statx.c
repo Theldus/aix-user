@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <arpa/inet.h>
 #include <sys/sysmacros.h>
 #include "syscalls.h"
 #include "unix.h"
@@ -109,29 +108,29 @@ static void
 stat_linux2aix(struct aix_stat *aix_st, const struct stat *linux_st)
 {
 	memset(aix_st, 0, sizeof (*aix_st));
-	aix_st->st_dev   = htonl(
+	aix_st->st_dev   = tobe32(
 		                 aix_makedev(
 		                 	major(linux_st->st_dev), minor(linux_st->st_dev)));
 	
-	aix_st->st_ino   = htonl(linux_st->st_ino);
+	aix_st->st_ino   = tobe32(linux_st->st_ino);
 	/*
 	 * Obs: the AIX modes seems to match Linux's modes too, thats why no
      * conversion were made here!.
      */
-	aix_st->st_mode  = htonl(linux_st->st_mode);
-	aix_st->st_nlink = htons(linux_st->st_nlink);
-	aix_st->st_uid   = htonl(linux_st->st_uid);
-	aix_st->st_gid   = htonl(linux_st->st_gid);
-	aix_st->st_rdev  = htonl(linux_st->st_rdev);
-	aix_st->st_size  = htonl(linux_st->st_size);
-	aix_st->st_atim.tv_sec  = htonl(linux_st->st_atim.tv_sec);
-	aix_st->st_atim.tv_nsec = htonl(linux_st->st_atim.tv_nsec);
-	aix_st->st_mtim.tv_sec  = htonl(linux_st->st_mtim.tv_sec);
-	aix_st->st_mtim.tv_nsec = htonl(linux_st->st_mtim.tv_nsec);
-	aix_st->st_ctim.tv_sec  = htonl(linux_st->st_ctim.tv_sec);
-	aix_st->st_ctim.tv_nsec = htonl(linux_st->st_ctim.tv_nsec);
-	aix_st->st_blksize = htonl(linux_st->st_blksize);
-	aix_st->st_blocks  = htonl(linux_st->st_blocks);
+	aix_st->st_mode  = tobe32(linux_st->st_mode);
+	aix_st->st_nlink = tobe16(linux_st->st_nlink);
+	aix_st->st_uid   = tobe32(linux_st->st_uid);
+	aix_st->st_gid   = tobe32(linux_st->st_gid);
+	aix_st->st_rdev  = tobe32(linux_st->st_rdev);
+	aix_st->st_size  = tobe32(linux_st->st_size);
+	aix_st->st_atim.tv_sec  = tobe32(linux_st->st_atim.tv_sec);
+	aix_st->st_atim.tv_nsec = tobe32(linux_st->st_atim.tv_nsec);
+	aix_st->st_mtim.tv_sec  = tobe32(linux_st->st_mtim.tv_sec);
+	aix_st->st_mtim.tv_nsec = tobe32(linux_st->st_mtim.tv_nsec);
+	aix_st->st_ctim.tv_sec  = tobe32(linux_st->st_ctim.tv_sec);
+	aix_st->st_ctim.tv_nsec = tobe32(linux_st->st_ctim.tv_nsec);
+	aix_st->st_blksize = tobe32(linux_st->st_blksize);
+	aix_st->st_blocks  = tobe32(linux_st->st_blocks);
 	/* Below are fields that do not exist on Linux, so they'll be just ignored
      * at the moment. */
 	aix_st->st_flag  = 0;
@@ -141,7 +140,7 @@ stat_linux2aix(struct aix_stat *aix_st, const struct stat *linux_st)
 	 * boundaries in getcwd(). We use the device number as a unique identifier
 	 * for each mount point.
 	 */
-	aix_st->st_vfs     = htonl(linux_st->st_dev);
+	aix_st->st_vfs     = tobe32(linux_st->st_dev);
 	aix_st->st_type    = 0;
 	aix_st->st_gen     = 0;
 }
@@ -156,29 +155,29 @@ static void
 stat64_linux2aix(struct aix_stat64 *aix_st, const struct stat *linux_st)
 {
 	memset(aix_st, 0, sizeof (*aix_st));
-	aix_st->st_dev   = htonl(
+	aix_st->st_dev   = tobe32(
 		                 aix_makedev(
 		                 	major(linux_st->st_dev), minor(linux_st->st_dev)));
-	aix_st->st_ino   = htonl(linux_st->st_ino);
-	aix_st->st_mode  = htonl(linux_st->st_mode);
-	aix_st->st_nlink = htons(linux_st->st_nlink);
-	aix_st->st_uid   = htonl(linux_st->st_uid);
-	aix_st->st_gid   = htonl(linux_st->st_gid);
-	aix_st->st_rdev  = htonl(linux_st->st_rdev);
-	aix_st->st_ssize = htonl(linux_st->st_size);
-	aix_st->st_size  = htonll(linux_st->st_size);
-	aix_st->st_atim.tv_sec  = htonl(linux_st->st_atim.tv_sec);
-	aix_st->st_atim.tv_nsec = htonl(linux_st->st_atim.tv_nsec);
-	aix_st->st_mtim.tv_sec  = htonl(linux_st->st_mtim.tv_sec);
-	aix_st->st_mtim.tv_nsec = htonl(linux_st->st_mtim.tv_nsec);
-	aix_st->st_ctim.tv_sec  = htonl(linux_st->st_ctim.tv_sec);
-	aix_st->st_ctim.tv_nsec = htonl(linux_st->st_ctim.tv_nsec);
-	aix_st->st_blksize = htonl(linux_st->st_blksize);
-	aix_st->st_blocks  = htonl(linux_st->st_blocks);
+	aix_st->st_ino   = tobe32(linux_st->st_ino);
+	aix_st->st_mode  = tobe32(linux_st->st_mode);
+	aix_st->st_nlink = tobe16(linux_st->st_nlink);
+	aix_st->st_uid   = tobe32(linux_st->st_uid);
+	aix_st->st_gid   = tobe32(linux_st->st_gid);
+	aix_st->st_rdev  = tobe32(linux_st->st_rdev);
+	aix_st->st_ssize = tobe32(linux_st->st_size);
+	aix_st->st_size  = tobe64(linux_st->st_size);
+	aix_st->st_atim.tv_sec  = tobe32(linux_st->st_atim.tv_sec);
+	aix_st->st_atim.tv_nsec = tobe32(linux_st->st_atim.tv_nsec);
+	aix_st->st_mtim.tv_sec  = tobe32(linux_st->st_mtim.tv_sec);
+	aix_st->st_mtim.tv_nsec = tobe32(linux_st->st_mtim.tv_nsec);
+	aix_st->st_ctim.tv_sec  = tobe32(linux_st->st_ctim.tv_sec);
+	aix_st->st_ctim.tv_nsec = tobe32(linux_st->st_ctim.tv_nsec);
+	aix_st->st_blksize = tobe32(linux_st->st_blksize);
+	aix_st->st_blocks  = tobe32(linux_st->st_blocks);
 	/* No-equivalent fields. */
 	aix_st->st_flag  = 0;
 	aix_st->st_vfstype = 0;
-	aix_st->st_vfs     = htonl(linux_st->st_dev);
+	aix_st->st_vfs     = tobe32(linux_st->st_dev);
 	aix_st->st_type    = 0;
 	aix_st->st_gen     = 0;
 }
@@ -193,28 +192,28 @@ static void
 stat64x_linux2aix(struct aix_stat64x *aix_st, const struct stat *linux_st)
 {
 	memset(aix_st, 0, sizeof (*aix_st));
-	aix_st->st_dev   = htonll(
+	aix_st->st_dev   = tobe64(
 		                 aix_makedev64(
 		                 	major(linux_st->st_dev), minor(linux_st->st_dev)));
-	aix_st->st_ino   = htonll(linux_st->st_ino);
-	aix_st->st_mode  = htonl(linux_st->st_mode);
-	aix_st->st_nlink = htons(linux_st->st_nlink);
-	aix_st->st_uid   = htonl(linux_st->st_uid);
-	aix_st->st_gid   = htonl(linux_st->st_gid);
-	aix_st->st_rdev  = htonll(linux_st->st_rdev);
-	aix_st->st_size  = htonll(linux_st->st_size);
-	aix_st->st_atim.tv_sec  = htonll(linux_st->st_atim.tv_sec);
-	aix_st->st_atim.tv_nsec = htonl(linux_st->st_atim.tv_nsec);
-	aix_st->st_mtim.tv_sec  = htonll(linux_st->st_mtim.tv_sec);
-	aix_st->st_mtim.tv_nsec = htonl(linux_st->st_mtim.tv_nsec);
-	aix_st->st_ctim.tv_sec  = htonll(linux_st->st_ctim.tv_sec);
-	aix_st->st_ctim.tv_nsec = htonl(linux_st->st_ctim.tv_nsec);
-	aix_st->st_blksize = htonll(linux_st->st_blksize);
-	aix_st->st_blocks  = htonll(linux_st->st_blocks);
+	aix_st->st_ino   = tobe64(linux_st->st_ino);
+	aix_st->st_mode  = tobe32(linux_st->st_mode);
+	aix_st->st_nlink = tobe16(linux_st->st_nlink);
+	aix_st->st_uid   = tobe32(linux_st->st_uid);
+	aix_st->st_gid   = tobe32(linux_st->st_gid);
+	aix_st->st_rdev  = tobe64(linux_st->st_rdev);
+	aix_st->st_size  = tobe64(linux_st->st_size);
+	aix_st->st_atim.tv_sec  = tobe64(linux_st->st_atim.tv_sec);
+	aix_st->st_atim.tv_nsec = tobe32(linux_st->st_atim.tv_nsec);
+	aix_st->st_mtim.tv_sec  = tobe64(linux_st->st_mtim.tv_sec);
+	aix_st->st_mtim.tv_nsec = tobe32(linux_st->st_mtim.tv_nsec);
+	aix_st->st_ctim.tv_sec  = tobe64(linux_st->st_ctim.tv_sec);
+	aix_st->st_ctim.tv_nsec = tobe32(linux_st->st_ctim.tv_nsec);
+	aix_st->st_blksize = tobe64(linux_st->st_blksize);
+	aix_st->st_blocks  = tobe64(linux_st->st_blocks);
 	/* No-equivalent fields. */
 	aix_st->st_flag  = 0;
 	aix_st->st_vfstype = 0;
-	aix_st->st_vfs     = htonl(linux_st->st_dev);
+	aix_st->st_vfs     = tobe32(linux_st->st_dev);
 	aix_st->st_type    = 0;
 	aix_st->st_gen     = 0;
 }

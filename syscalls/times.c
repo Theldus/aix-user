@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include <sys/times.h>
 #include "syscalls.h"
 #include "unix.h"
@@ -57,10 +56,10 @@ int aix_times(uc_engine *uc)
 	}
 
 	/* Overflow is allowed. */
-	a_tms->tms_utime  = htonl((s32)l_tms.tms_utime);
-	a_tms->tms_stime  = htonl((s32)l_tms.tms_stime);
-	a_tms->tms_cutime = htonl((s32)l_tms.tms_cutime);
-	a_tms->tms_cstime = htonl((s32)l_tms.tms_cstime);
+	a_tms->tms_utime  = tobe32((s32)l_tms.tms_utime);
+	a_tms->tms_stime  = tobe32((s32)l_tms.tms_stime);
+	a_tms->tms_cutime = tobe32((s32)l_tms.tms_cutime);
+	a_tms->tms_cstime = tobe32((s32)l_tms.tms_cstime);
 
 	ret = l_ret;
 out:

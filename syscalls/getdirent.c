@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
@@ -55,9 +54,9 @@ d64_linux2aix(struct aix_dirent64 *ad, const struct linux_dirent64 *ld)
 	if ((len = strlen(ld->d_name)) > NAME_MAX_LEN)
 		return -1;
 
-	ad->off    = htonll(ld->d_off);
-	ad->ino    = htonll(ld->d_ino);
-	ad->namlen = htons(len);
+	ad->off    = tobe64(ld->d_off);
+	ad->ino    = tobe64(ld->d_ino);
+	ad->namlen = tobe16(len);
 	memcpy(ad->name, ld->d_name, len);
 
 	i = len;
@@ -66,7 +65,7 @@ d64_linux2aix(struct aix_dirent64 *ad, const struct linux_dirent64 *ld)
 	} while (++i & 3);
 
 	reclen = i + 20; /* header (8+8+2+2) + padded name */
-	ad->reclen = htons(reclen);
+	ad->reclen = tobe16(reclen);
 	return reclen;
 }
 

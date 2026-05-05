@@ -11,7 +11,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include "syscalls.h"
 #include "mm.h"
 #include "util.h"
@@ -265,8 +264,8 @@ u32 syscall_register(const char *sym_name)
 	if (!(h_desc = mm_vm2host(next_desc_addr)))
 		errx(1, "Unable to find mapping to next_desc_addr!!\n");
 	
-	h_desc[0] = htonl(SYSCALL_ADDR);  /* Entry point: 0x3700            */
-	h_desc[1] = htonl(idx);           /* TOC/syscall index              */
+	h_desc[0] = tobe32(SYSCALL_ADDR);  /* Entry point: 0x3700            */
+	h_desc[1] = tobe32(idx);           /* TOC/syscall index              */
 	h_desc[2] = h_desc[1];            /* Environment (same as TOC)      */
 
 	/* Register the new syscall. */

@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 
 /*
  * This is a reference test file for getdirent64 that uses getdents64 and

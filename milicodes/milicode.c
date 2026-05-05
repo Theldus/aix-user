@@ -6,7 +6,6 @@
 
 #include <string.h>
 #include <time.h>
-#include <arpa/inet.h>
 #include "mm.h"
 #include "util.h"
 

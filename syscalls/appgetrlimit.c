@@ -5,7 +5,6 @@
  */
 
 #include <string.h>
-#include <arpa/inet.h>
 #include <sys/resource.h>
 #include "syscalls.h"
 #include "unix.h"
@@ -91,12 +90,12 @@ static int do_getrlimit(uc_engine *uc, int is_64bit)
 
 	/* Convert and write to VM memory. */
 	if (is_64bit) {
-		ar64.rlim_cur = htonll(l_rlim.rlim_cur);
-		ar64.rlim_max = htonll(l_rlim.rlim_max);
+		ar64.rlim_cur = tobe64(l_rlim.rlim_cur);
+		ar64.rlim_max = tobe64(l_rlim.rlim_max);
 		memcpy(h_drlimit, &ar64, sizeof ar64);
 	} else {
-		ar32.rlim_cur = htonl((u32)l_rlim.rlim_cur);
-		ar32.rlim_max = htonl((u32)l_rlim.rlim_max);
+		ar32.rlim_cur = tobe32((u32)l_rlim.rlim_cur);
+		ar32.rlim_max = tobe32((u32)l_rlim.rlim_max);
 		memcpy(h_drlimit, &ar32, sizeof ar32);
 	}
 

@@ -122,7 +122,7 @@ void setup_server(int *srv_fd, uint16_t port)
 	memset((void*)&server, 0, sizeof(server));
 	server.sin_family      = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port        = htons(port);
+	server.sin_port        = tobe16(port);
 
 	/* Bind. */
 	if (bind(*srv_fd, (struct sockaddr *)&server, sizeof(server)) < 0)
@@ -373,7 +373,7 @@ static void handle_gdb_read_registers(uc_engine *uc)
 
 	/* Convert registers to big-endian for GDB. */
 	for (i = 0; i < PPC_REGS_AMNT; i++)
-		ppcregs.u32_vals[i] = htonl(ppcregs.u32_vals[i]);
+		ppcregs.u32_vals[i] = tobe32(ppcregs.u32_vals[i]);
 
 	buff = encode_hex((const char*) ppcregs.u8_vals, sizeof ppcregs);
 	send_gdb_cmd(buff, sizeof(ppcregs) * 2);
@@ -498,7 +498,7 @@ static int handle_gdb_write_register(uc_engine *uc, const char *buff,
 	memcpy(&reg_val, dec, 4);
 
 	/* Convert from big-endian (GDB sends BE for PPC). */
-	reg_val = ntohl(reg_val);
+	reg_val = frombe32(reg_val);
 
 	/* Validate register number against our register table. */
 	if (reg_num >= PPC_REGS_AMNT) {

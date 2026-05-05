@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include "unix.h"
 #include "syscalls.h"
 #include "aix_errno.h"
@@ -66,7 +65,7 @@ int aix_vmgetinfo(uc_engine *uc)
 	}
 
 	ret = 0;
-	pginfo->pagesize[1] = htonl(4096);
+	pginfo->pagesize[1] = tobe32(4096);
 out:
 	TRACE("vmgetinfo", "0x%x, %d, %d", out, cmd, add);
 	return ret;

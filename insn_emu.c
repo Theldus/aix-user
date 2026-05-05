@@ -29,7 +29,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <arpa/inet.h>
 #include "mm.h"
 #include "util.h"
 #include "insn_emu.h"
@@ -141,7 +140,7 @@ static void hook_illegal_insn(uc_engine *uc, u32 intno, void *user_data)
 	pc -= 4;
 	uc_mem_read(uc, pc, &insn, 4);
 
-	insn   = ntohl(insn);
+	insn   = frombe32(insn);
 	opcode = get_opcode(insn);
 	subop  = get_subop(insn);
 

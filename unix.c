@@ -31,7 +31,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include "syscalls.h"
 #include "milicode.h"
 #include "mm.h"
@@ -232,12 +231,12 @@ void unix_init_system_config(uc_engine *uc)
 		errx(1, "Unable to find mapping to _system_TB_config!\n");
 
 	/* _system_configuration. */
-	sysconfig->xint  = htonl((s32)1);
-	sysconfig->xfrac = htonl((s32)1);
-	sysconfig->rtc   = htonl((s32)RTC_POWER_PC);
+	sysconfig->xint  = tobe32((s32)1);
+	sysconfig->xfrac = tobe32((s32)1);
+	sysconfig->rtc   = tobe32((s32)RTC_POWER_PC);
 
 	/* _system_tb_config */
-	sys_tb_config->tb_ns_per_tic.kernel_help = htonl((s32)1);
+	sys_tb_config->tb_ns_per_tic.kernel_help = tobe32((s32)1);
 
 	UNIX("_system_configuration/tb configured! (0x%x - 0x%x)\n",
 		UNIX_SYSTEM_CONFIG, UNIX_SYSTEM_TB_CONFIG);

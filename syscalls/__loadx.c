@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include "syscalls.h"
 #include "mm.h"
 #include "loader.h"
@@ -94,8 +93,8 @@ int aix___loadx(uc_engine *uc)
 		}
 
 		/* Header. */
-		dl_info->h.flags   = htonl(AIX_DL_INFO_OK);
-		dl_info->h.size    = htonl(16);
+		dl_info->h.flags   = tobe32(AIX_DL_INFO_OK);
+		dl_info->h.size    = tobe32(16);
 		dl_info->h.len     = 0; /* to be incremented/converted later. */
 		dl_info->h.padding = 0;
 		dlp = dl_info+1;
@@ -107,25 +106,25 @@ int aix___loadx(uc_engine *uc)
 				continue;
 
 			r = mm_find_region(lc->text_start);
-			dlp->e.text_start = htonl(r->vm_base);
-			dlp->e.data_start = htonl(lc->data_start);
-			dlp->e.data_size  = htonl(lc->xcoff.aux.o_dsize +
+			dlp->e.text_start = tobe32(r->vm_base);
+			dlp->e.data_start = tobe32(lc->data_start);
+			dlp->e.data_size  = tobe32(lc->xcoff.aux.o_dsize +
 			                          lc->xcoff.aux.o_bsize);
-			dlp->e.index      = htons(idx);
+			dlp->e.index      = tobe16(idx);
 
 			/* For EXECQ the IS_NEW flag is also returned on AIX, but not
 			 * for the EXITQ, so we're omitting too, the remaining is
 			 * exact the same.
 			 */
 			if (flg & AIX_DL_EXECQ)
-				dlp->e.flags = htons(AIX_DL_HAS_RTINIT|AIX_DL_IS_NEW);
+				dlp->e.flags = tobe16(AIX_DL_HAS_RTINIT|AIX_DL_IS_NEW);
 			else
-				dlp->e.flags = htons(AIX_DL_HAS_RTINIT);
+				dlp->e.flags = tobe16(AIX_DL_HAS_RTINIT);
 
 			dlp++;
 			idx++;
 		}
-		dl_info->h.len = htonl(idx);
+		dl_info->h.len = tobe32(idx);
 	}
 
 out:

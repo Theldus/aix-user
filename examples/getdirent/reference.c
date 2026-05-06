@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 /*
  * This is a reference test file for getdirent64 that uses getdents64 and
@@ -67,6 +68,13 @@ static int get_aix_dirents_total_size(const char *buff, int size)
 }
 
 /**
+ * @brief Linux getdents64 syscall.
+ */
+static ssize_t linux_getdents64(int fd, void *dirp, size_t count) {
+	return syscall(SYS_getdents64, fd, dirp, count);
+}
+
+/**
  * @brief Print a given linux dirent
  * @param ent Linux dirent to be printed.
  */
@@ -101,7 +109,7 @@ int main(int argc, char **argv)
 	}
 
 	printf("=== First read ===\n");
-	ret = getdents64(fd, buf, sizeof(buf));
+	ret = linux_getdents64(fd, buf, sizeof(buf));
 	ent = (struct linux_dirent64 *)buf;
 	i   = 0;
 	printf("getdirent64 returned: %d\n\n",
@@ -132,7 +140,7 @@ int main(int argc, char **argv)
 	printf("=== Multiple sequential calls to getdirent64 ===\n");
 	lseek(fd, 0, SEEK_SET);
 	for (j = 0; j < i; j++) {
-		ret = getdents64(fd, buf, true_len_entries[j]);
+		ret = linux_getdents64(fd, buf, true_len_entries[j]);
 		printf(
 			"Entry #%d, >>> getdirent64(fd, buf, %d) = %d <<<\n",
 			j,
@@ -146,7 +154,7 @@ int main(int argc, char **argv)
 	
 	/* Rewind and read first entry */
 	lseek(fd, 0, SEEK_SET);
-	ret = getdents64(fd, buf, first_entry_len);
+	ret = linux_getdents64(fd, buf, first_entry_len);
 	if (ret > 0) {
 		ent = (struct linux_dirent64 *)buf;
 		printf("First entry: \"%s\", d_offset=%llu\n", 
@@ -157,7 +165,7 @@ int main(int argc, char **argv)
 		lseek(fd, ent->d_offset, SEEK_SET);
 		
 		/* Read next entry */
-		ret = getdents64(fd, buf, sizeof(buf));
+		ret = linux_getdents64(fd, buf, sizeof(buf));
 		if (ret > 0) {
 			ent = (struct linux_dirent64 *)buf;
 			printf("After seek, first entry in buffer: \"%s\"\n", ent->d_name);
@@ -170,7 +178,7 @@ int main(int argc, char **argv)
 	off_t pos_before = lseek(fd, 0, SEEK_CUR);
 	printf("Position before read: %lld\n", (long long)pos_before);
 	
-	ret = getdents64(fd, buf, sizeof(buf));
+	ret = linux_getdents64(fd, buf, sizeof(buf));
 	off_t pos_after = lseek(fd, 0, SEEK_CUR);
 	printf("Position after read:  %lld\n", (long long)pos_after);
 	printf("Bytes returned: %d\n", get_aix_dirents_total_size(buf, ret));

@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/syscall.h>
+
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
@@ -119,7 +121,7 @@ int aix_getdirent64(uc_engine *uc)
 	if (!(l_buff = malloc(vm_d64siz + 256)))
 		errx(1, "getdirent64: VM OOM!\n");
 
-	l_ret  = getdents64(vm_fd, l_buff, vm_d64siz + 256);
+	l_ret  = syscall(SYS_getdents64, vm_fd, l_buff, vm_d64siz + 256);
 	ldir64 = (struct linux_dirent64 *)l_buff;
 
 	if (l_ret <= 0) {

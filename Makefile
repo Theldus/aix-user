@@ -58,6 +58,8 @@ OBJS += syscalls/fchmod.o
 OBJS += syscalls/fchown.o
 OBJS += syscalls/shmat.o
 OBJS += syscalls/pipe.o
+OBJS += syscalls/kfork.o
+OBJS += syscalls/kwaitpid.o
 
 # Pretty print
 Q := @

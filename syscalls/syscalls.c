@@ -155,6 +155,9 @@ static struct sys_table_entry sys_table[] = {
 	{"shmat",          aix_shmat},
 	{"shmdt",          aix_shmdt},
 	{"pipe",           aix_pipe},
+	{"kfork",          aix_kfork},
+	{"kwaitpid",       aix_kwaitpid},
+	{"kwaitpid64",     aix_kwaitpid64},
 };
 
 /**

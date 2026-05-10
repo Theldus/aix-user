@@ -194,10 +194,13 @@ edge cases too.
 | 12             | kpwrite            | Implemented           |
 | 17             | _clock_nanosleep   | Implemented           |
 | 18             | _nsleep            | Implemented           |
+| 28             | kwaitpid           | Partial/Good enough   |
+| 75             | kfork              | Implemented           |
 | 107            | kill               | Implemented           |
 | 112            | getuidx            | Implemented           |
 | 113            | getgidx            | Implemented           |
 | 149            | _exit              | Implemented           |
+| 150            | kwaitpid64         | Partial/Good enough   |
 | 174            | appgetrlimit       | Implemented           |
 | 179            | getrlimit64        | Implemented           |
 | 258            | times              | Implemented           |

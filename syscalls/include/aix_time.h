@@ -16,5 +16,9 @@ struct aix_timespec64 {
 	s32 tv_nsec;
 	s32 tv_pad;
 };
+struct aix_timeval {
+	s32 tv_sec;
+	s32 tv_usec;
+};
 
 #endif

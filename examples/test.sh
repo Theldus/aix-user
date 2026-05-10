@@ -93,6 +93,7 @@ do_test_without_out_comparison "time" 0 "$(date +%s)"
 do_test "rtinit" 0
 do_test "mmap" 0
 do_test "shmat" 0
+do_test "fork" 0
 
 if [ "${any_error}" -eq 1 ]; then
 	echo "One or more tests have failed!"

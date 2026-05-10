@@ -95,5 +95,6 @@ extern int aix_fchmod(uc_engine *uc);
 extern int aix_fchown(uc_engine *uc);
 extern int aix_shmat(uc_engine *uc);
 extern int aix_shmdt(uc_engine *uc);
+extern int aix_pipe(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

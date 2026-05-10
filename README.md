@@ -234,6 +234,7 @@ edge cases too.
 | 574            | _getpgrp           | Implemented           |
 | 575            | _getppid           | Implemented           |
 | 578            | _getpid            | Implemented           |
+| 663            | pipe               | Implemented           |
 | 679            | kmmap              | Partial/Good enough   |
 | 683            | munmap             | Partial/Good enough   |
 | 684            | mmap               | Partial/Good enough   |

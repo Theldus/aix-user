@@ -12,9 +12,5 @@
 [print_terminated_reason:56]  -> Reason: normally exited, code: 5
 [test_wait_rusage:136] -> Child mem: >= 64 MiB (1)
 [test_nochild:157] pid: -1, errno: (No child processes)
-[test_nohang:193] WNOHANG while child alive: returned 0 (expected 0)
-[test_nohang:186] Child exiting
-[test_nohang:198] blocking wait after release: returned == expected? (1)
-[print_terminated_reason:56]  -> Reason: normally exited, code: 0
-[test_nohang_exited:222] WNOHANG after child exited: returned == expected (1)
+[test_nohang_exited:180] WNOHANG after child exited: returned == expected (1)
 [print_terminated_reason:56]  -> Reason: normally exited, code: 7

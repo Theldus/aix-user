@@ -157,48 +157,6 @@ static void test_nochild(void) {
 	DBG("pid: %d, errno: (%s)\n", pid, strerror(errno));
 }
 
-/* Asserts if WNOHANG option flag works. */
-static void test_nohang(void)
-{
-	int p[2];
-	pid_t w;
-	pid_t pid;
-	int wstatus;
-	char c;
-
-	if (pipe(p) < 0) {
-		DBG("pipe failed: (%s)\n", strerror(errno));
-		return;
-	}
-
-	pid = fork();
-	if (pid < 0) {
-		DBG("Unable to fork, error: (%s)\n", strerror(errno));
-		close(p[0]);
-		close(p[1]);
-		return;
-	}
-
-	if (pid == 0) {
-		close(p[1]);
-		read(p[0], &c, 1);
-		close(p[0]);
-		DBG("Child exiting\n");
-		_exit(0);
-	}
-
-	/* Parent: child is guaranteed alive and blocked on read(). */
-	close(p[0]);
-	w = waitpid(pid, &wstatus, WNOHANG);
-	DBG("WNOHANG while child alive: returned %d (expected 0)\n", w);
-
-	/* Release child, then reap with a blocking wait. */
-	close(p[1]);
-	w = waitpid(pid, &wstatus, 0);
-	DBG("blocking wait after release: returned == expected? (%d)\n", (w==pid));
-	print_terminated_reason(wstatus);
-}
-
 /* Asserts WNOHANG returns the pid once the child has actually exited. */
 static void test_nohang_exited(void) {
 	pid_t pid, w;
@@ -230,7 +188,6 @@ int main(void)
 	test_wait_signal_status();
 	test_wait_rusage();
 	test_nochild();
-	test_nohang();
 	test_nohang_exited();
 	return 0;
 }

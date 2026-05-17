@@ -211,7 +211,7 @@ u32 read_8th_arg(void) { return read_gpr(10); }
  *
  * @param val Return value to write.
  */
-static void write_ret_value(u32 val) {
+void write_ret_value(u32 val) {
 	write_gpr(3, val);
 }
 

@@ -65,6 +65,7 @@ struct mm_region *mm_find_region(u32 vaddr) {
 		if (vaddr >= r->vm_base && (vaddr - r->vm_base) < r->size)
 			return r;
 	}
+	warn(">>> Unable to find region for address: %x <<<\n", vaddr);
 	return NULL;
 }
 

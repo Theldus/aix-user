@@ -10,10 +10,7 @@ CC     ?= cc
 CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes
 CFLAGS += -I$(CURDIR)/syscalls -I$(CURDIR)/syscalls/include
 CFLAGS += $(shell pkg-config --cflags unicorn) -O3 -Wall -Wno-unused-variable
-LDLIBS += $(shell pkg-config --libs unicorn) 
-MILIS   = milicodes/strlen.h  milicodes/memcmp.h milicodes/memmove.h
-MILIS  += milicodes/strcmp.h  milicodes/strcpy.h milicodes/strstr.h
-MILIS  += milicodes/memccpy.h milicodes/memset.h milicodes/fill.h
+LDLIBS += $(shell pkg-config --libs unicorn)
 
 OBJS  = aix-user.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
 OBJS += util.o milicodes/milicode.o insn_emu.o
@@ -68,7 +65,7 @@ ifeq ($(V), 1)
 endif
 
 .PHONY: all clean test install
-all: $(MILIS) aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
+all: aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
 
 # Paths
 BINDIR = $(PREFIX)/bin

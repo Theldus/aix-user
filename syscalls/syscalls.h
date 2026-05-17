@@ -28,6 +28,7 @@ extern u32 syscall_register(const char *sym_name);
 /* GPRs. */
 extern u32 read_gpr(u32 gpr);
 extern void write_gpr(u32 gpr, u32 val);
+extern void write_ret_value(u32 val);
 
 /* Arguments. */
 u32 read_1st_arg(void);

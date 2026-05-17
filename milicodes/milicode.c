@@ -8,25 +8,29 @@
 #include <time.h>
 #include "mm.h"
 #include "util.h"
-
-#include "memcmp.h"
-#include "strlen.h"
-#include "memmove.h"
-#include "strcmp.h"
-#include "strcpy.h"
-#include "strstr.h"
-#include "memccpy.h"
-#include "memset.h"
-#include "bzero.h"
-#include "fill.h"
 #include "syscalls.h"
 
 #define GENERIC_HOOK_MILI_HDLR \
 	"\x4e\x80\x00\x20" /* blr */ \
 	"\x60\x00\x00\x00" /* nop */
 
-static void mili_read_tick(uc_engine *, u64, u32, void*);
-static void mili_muldiv64(uc_engine *, u64, u32, void*);
+#define MILI_HOOK(name) \
+    static void name(uc_engine *uc, u64 addr, u32 size, void *ud)
+#define MILI_UNUSED() ((void)uc, (void)addr, (void)size, (void)ud)
+
+/**
+ * @brief Read a given pointer argument at a provided position
+ * and returns an already-converted host address.
+ *
+ * @param n   Argument number.
+ * @param vm  Unsigned 32-bit VM address.
+ *
+ * @return Returns the host-equivalent address read.
+ */
+static inline void *arg_ptr(int n, u32 *vm) {
+	*vm = read_gpr(2 + n);
+	return mm_vm2host(*vm);
+}
 
 /**
  * Milicode:
@@ -73,48 +77,118 @@ static void mili_muldiv64(uc_engine *, u64, u32, void*);
 		} \
 	} while (0)
 
-/* Milicodes. */
-#define MILI(n) \
-  .buff=milicodes_##n##_bin,.size=sizeof(milicodes_##n##_bin)
+/* -------------------------------------------------------------------------- */
+/* libc-equivalent milicodes                                                  */
+/* -------------------------------------------------------------------------- */
 
-static struct milicodes {
-	u32 addr;
-	u8 *buff;
-	int size;
-} milicodes[] = {
-	{.addr = 0xd000, MILI(memcmp)},
-	{.addr = 0xd400, MILI(strstr)},
-	{.addr = 0xd800, MILI(memccpy)},
-	{.addr = 0xdc00, MILI(strcmp)},
-	{.addr = 0xe000, MILI(bzero)},
-	{.addr = 0xe008, MILI(memset)},
-	{.addr = 0xe600, MILI(strlen)},
-	{.addr = 0xf000, MILI(memmove)},
-	{.addr = 0xf800, MILI(fill)},
-	{.addr = 0xfc00, MILI(strcpy)},
-};
+/* memcmp milicode: int memcmp(const void *s1, const void *s2, size_t n); */
+MILI_HOOK(mili_memcmp) {
+	MILI_UNUSED();
+	u32 s1, s2;
+	void *hs1 = arg_ptr(1, &s1);
+	void *hs2 = arg_ptr(2, &s2);
+	u32 n     = read_3rd_arg();
+	write_ret_value(memcmp(hs1, hs2, n));
+}
 
-/*
- * Hook milicode
- * Sometimes there are kernel function calls that might be too big/expensive
- * do to with an 'already-baked' asm (like the milicodes above). When this
- * happen, a better stratety is to handle directly as a Unicorn hook.
- *
- * This happens for example at 0x11520, because I *need* to return a dynamic
- * value, so... I'm unable to do this without a hook.
- *
- * Other scenario happens at 0x11570, when a kernel muldiv64 is called:
- * this routine is pretty simple, but for 32-bit PPC this generates
- * roughly 5kiB of code due to GCC helpers being emitted for 64-bit
- * arithmetic.
+/* strstr milicode: char *strstr(const char *haystack, const char *needle); */
+MILI_HOOK(mili_strstr) {
+	MILI_UNUSED();
+	u32 s1, s2;
+	char *ret;
+	char *hs1 = arg_ptr(1, &s1);
+	char *hs2 = arg_ptr(2, &s2);
+	ret = strstr(hs1, hs2);
+	write_ret_value(ret ? (u32)(ret-hs1)+s1 : 0);
+}
+
+/* memccpy milicode:
+ * void *memccpy(void *restrict s1, const void *restrict s2, int c, size_t n)
  */
-struct hook_milicode {
-	u32 addr;
-	void (*hndlr)(uc_engine *uc, u64 addr, u32 size, void *ud);
-} hook_milicodes[] = {
-	{.addr = 0x11520, mili_read_tick},
-	{.addr = 0x11570, mili_muldiv64},
-};
+MILI_HOOK(mili_memccpy) {
+	MILI_UNUSED();
+	u32  s1, s2;
+	char *ret;
+	char *hs1 = arg_ptr(1, &s1);
+	char *hs2 = arg_ptr(2, &s2);
+	u32 c = read_3rd_arg();
+	u32 n = read_4th_arg();
+	ret = memccpy(hs1, hs2, c, n);
+	write_ret_value(ret ? (u32)(ret-hs1)+s1 : 0);
+}
+
+/* strcmp milicode: int strcmp(const char *s1, const char *s2) */
+MILI_HOOK(mili_strcmp) {
+	MILI_UNUSED();
+	char *hs1 = mm_vm2host(read_1st_arg());
+	char *hs2 = mm_vm2host(read_2nd_arg());
+	write_ret_value(strcmp(hs1,hs2));
+}
+
+/* bzero milicode: void bzero(void *s, size_t n) */
+MILI_HOOK(mili_bzero) {
+	MILI_UNUSED();
+	void *hs1 = mm_vm2host(read_1st_arg());
+	u32   n   = read_2nd_arg();
+	memset(hs1, 0, n);
+}
+
+/* memset milicode: void *memset(void *s, int c, size_t n); */
+MILI_HOOK(mili_memset) {
+	MILI_UNUSED();
+	u32 s1;
+	void *hs1 = arg_ptr(1, &s1);
+	s32    c  = read_2nd_arg();
+	u32    n  = read_3rd_arg();
+	memset(hs1, c, n);
+	write_ret_value(s1);
+}
+
+/* strlen milicode: size_t strlen(const char *s); */
+MILI_HOOK(mili_strlen) {
+	MILI_UNUSED();
+	char *hs1 = mm_vm2host(read_1st_arg());
+	write_ret_value(strlen(hs1));
+}
+
+/* memmove milicode: void *memmove(void *dest, const void *src, size_t n); */
+MILI_HOOK(mili_memmove) {
+	MILI_UNUSED();
+	u32 dst, src;
+	void *hd = arg_ptr(1, &dst);
+	void *hs = arg_ptr(2, &src);
+	memmove(hd, hs, read_3rd_arg());
+	write_ret_value(dst);
+}
+
+/* memmove fill: void *fill(void *dst, size_t len, uint32_t val); */
+MILI_HOOK(mili_fill) {
+	MILI_UNUSED();
+	u32 dst, len, val, i;
+	char *hdst = arg_ptr(1, &dst);
+	len = read_2nd_arg();
+	val = frombe32(read_3rd_arg());
+
+	for (i = 0; i < (len & ~3); i += 4)
+		memcpy(hdst+i, &val, 4);
+
+	memcpy(hdst + (len & ~3), &val, len & 3);
+	write_ret_value(dst);
+}
+
+/* memmove strcpy: char *strcpy(char *restrict s1, const char *restrict s2); */
+MILI_HOOK(mili_strcpy) {
+	MILI_UNUSED();
+	u32 s1, s2;
+	char *hs1 = arg_ptr(1, &s1);
+	char *hs2 = arg_ptr(2, &s2);
+	strcpy(hs1, hs2);
+	write_ret_value(s1);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Misc milicodes                                                             */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief The original kernel function: "Read the current timer from HW
@@ -163,6 +237,40 @@ static void mili_muldiv64(uc_engine *uc, u64 addr, u32 size, void *user_data)
 	write_gpr(4, ret & 0xFFFFFFFF);
 }
 
+/*
+ * Hook milicode
+ * Sometimes there are kernel function calls that might be too big/expensive
+ * do to with an 'already-baked' asm (like the milicodes above). When this
+ * happen, a better stratety is to handle directly as a Unicorn hook.
+ *
+ * This happens for example at 0x11520, because I *need* to return a dynamic
+ * value, so... I'm unable to do this without a hook.
+ *
+ * Other scenario happens at 0x11570, when a kernel muldiv64 is called:
+ * this routine is pretty simple, but for 32-bit PPC this generates
+ * roughly 5kiB of code due to GCC helpers being emitted for 64-bit
+ * arithmetic.
+ */
+struct hook_milicode {
+	u32 addr;
+	void (*hndlr)(uc_engine *uc, u64 addr, u32 size, void *ud);
+} hook_milicodes[] = {
+	/* libc milicodes. */
+	{.addr = 0xd000, mili_memcmp},
+	{.addr = 0xd400, mili_strstr},
+	{.addr = 0xd800, mili_memccpy},
+	{.addr = 0xdc00, mili_strcmp},
+	{.addr = 0xe000, mili_bzero},
+	{.addr = 0xe008, mili_memset},
+	{.addr = 0xe600, mili_strlen},
+	{.addr = 0xf000, mili_memmove},
+	{.addr = 0xf800, mili_fill},
+	{.addr = 0xfc00, mili_strcpy},
+	/* extra 'milicodes'. */
+	{.addr = 0x11520, mili_read_tick},
+	{.addr = 0x11570, mili_muldiv64},
+};
+
 /**
  * @brief Initializes the milicode hooks part: a special-case of milicodes
  * for scenarios where a dynamic handler is better fit than an ASM.
@@ -202,24 +310,6 @@ static void milicode_hooks_init(uc_engine *uc)
  * Map and write all the milicode into their expected memory regions.
  * @param uc Unicorn Engine.
  */
-void milicode_init(uc_engine *uc)
-{
-	char *h_mili_base;
-	uc_err err;
-	int i;
-
-	if (!(h_mili_base = mm_vm2host(UNIX_MILI_ADDR)))
-		errx(1, "Milicodes are not mapped?\n");
-
-	for (i = 0; i < sizeof(milicodes)/sizeof(milicodes[0]); i++) {
-		MC("Milicode #%d, addr=%x, len=%d\n", i, milicodes[i].addr,
-			milicodes[i].size);
-
-		memcpy(
-			h_mili_base + (milicodes[i].addr - UNIX_MILI_ADDR),
-			milicodes[i].buff,
-			milicodes[i].size);
-	}
-
+void milicode_init(uc_engine *uc) {
 	milicode_hooks_init(uc);
 }

@@ -303,6 +303,12 @@ int ar_open(const char *bin, struct big_ar *ar)
 		return ret;
 	}
 
+	ar->ar_path = strdup(bin);
+	if (!ar->ar_path) {
+		warn("Unable to dup buffer for file path on bigar!\n");
+		return ret;
+	}
+
 	ret = 0;
 	return ret;
 }

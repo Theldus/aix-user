@@ -80,8 +80,9 @@ struct ar_memb_hdr_mem {
  * Big AR data
  */ 
 struct big_ar {
-	int    fd;
-	char   *buff;
+	int  fd;
+	char *buff;
+	char *ar_path;
 	size_t file_size;
 	struct ar_fl_hdr_mem fl_hdr;
 };

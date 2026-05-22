@@ -107,6 +107,20 @@ prepend_lib_path(char *dest, size_t dest_size, const char *basename)
 }
 
 /**
+ * @brief Return the final path component (basename) of @p path.
+ *
+ * Unlike basename(3), this neither modifies @p path nor depends on
+ * which basename() variant (XPG vs GNU) the headers happen to expose.
+ *
+ * @param path NULL-terminated path string.
+ * @return Pointer into @p path at the last component.
+ */
+static const char *path_basename(const char *path) {
+	const char *slash = strrchr(path, '/');
+	return slash ? slash + 1 : path;
+}
+
+/**
  * @brief Search for a loaded module by import symbol reference.
  *
  * This function looks up the import ID from the symbol, constructs
@@ -117,7 +131,7 @@ prepend_lib_path(char *dest, size_t dest_size, const char *basename)
  * @param lc      Current loaded XCOFF with import ID table.
  * @return Pointer to the loaded module if found, NULL otherwise.
  */
-static const struct loaded_coff *
+static struct loaded_coff *
 find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 	const struct loaded_coff *lc)
 {
@@ -172,12 +186,13 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
  */
 static u32 
 resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
-	const struct loaded_coff *cur_lc)
+	struct loaded_coff *cur_lc)
 {
 	const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym;
 	const struct xcoff_ldr_hdr32 *imp_ldr;
-	const struct loaded_coff *imp_lc;
-	const union xcoff_impid *cur_id;
+	struct loaded_coff *imp_lc;
+	union xcoff_impid *cur_id;
+	const char *sym;
 	int i;
 
 	INCREASE_DEPTH;
@@ -208,6 +223,20 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 		return handle_unix_imports(cur_sym);
 	}
 
+	/* Special handling for members inside the same archive, i.e.,
+	 * basename == '.'. This happens for shr.o and _shr.o, both
+	 * inside libc.a, in these cases, we use the basename of the
+	 * current opened/processed archive.
+	 *
+	 * Thanks AIX 7.3 ^.^  /s.
+	 */
+	if (!strcmp(cur_id->l_impidbase, ".")) {
+		if (!cur_lc->bar.ar_path)
+			errx(1, "Import base '.' on a non-archive module (%s)!\n",
+				cur_lc->name);
+		cur_id->l_impidbase = path_basename(cur_lc->bar.ar_path);
+	}
+
 	LOADER("Resolving import: %s from %s (currently processing: %s)\n",
 		cur_sym->u.l_strtblname,
 		cur_id->l_impidbase,
@@ -221,9 +250,19 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	imp_ldr = &imp_lc->xcoff.ldr.hdr;
 	imp_sym = imp_lc->xcoff.ldr.symtbl;
 
+	/* AIX's 7.3 libc for some reason appends symbols the char '%', and
+	 * these symbols are then imported from _shr.o. To handle this, we
+	 * simply check and disregard that symbol, since the symbol on _shr.o
+	 * do *not* contains the '%'.
+	 */
+	sym = cur_sym->u.l_strtblname;
+	if (*sym == '%')
+		sym++;
+
 	for (i = 0; i < imp_ldr->l_nsyms; i++) {
+
 		/* SKip symbols that do not match our search. */
-		if (strcmp(cur_sym->u.l_strtblname, imp_sym[i].u.l_strtblname))
+		if (strcmp(sym, imp_sym[i].u.l_strtblname))
 			continue;
 
 		/* Check if this is a passthrough/re-exported symbol */

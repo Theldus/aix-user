@@ -29,9 +29,12 @@ struct mm_region {
 #define TEXT_SIZE 0x10000000 /* 256 MiB. */
 #define DATA_SIZE 0x10000000 /* 256 MiB. */
 
-/* Miscellaneous export symbols (.data mapped). */
+/* Miscellaneous export symbols (.data mapped).
+ * Note: AIX 7.3 re-exports much more /unix symbols than 7.2.
+ * This might happen later for newer versions too.
+ */
 #define UNIX_DATA_ADDR 0x100000 /* Starts at 1MiB. */
-#define UNIX_DATA_SIZE 0x100000 /* 1MiB.           */
+#define UNIX_DATA_SIZE 0x200000 /* 2MiB.           */
 
 /* Special data structures on kernel. */
 #define UNIX_SYSTEM_CONFIG    0x34e0

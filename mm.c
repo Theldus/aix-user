@@ -342,6 +342,10 @@ static void mm_regions_init(void)
 	mm_alloc_region(STACK_ADDR-STACK_SIZE, STACK_SIZE, NULL,
 		UC_PROT_READ|UC_PROT_WRITE, "stack");
 
+	/* Thread stuff, I guess... thanks AIX 7.3. */
+	mm_alloc_region(THREAD_ADDR, THREAD_SIZE, NULL,
+		UC_PROT_READ|UC_PROT_WRITE, "thread");
+
 	/* Heap region. */
 	mm_init_heap();
 }
@@ -572,6 +576,7 @@ u32 mm_read_u32(u32 vaddr, int *err)
 		warn("Unable to find a mapping from %x!\n", vaddr);
 		return 0;
 	}
+	*err = 0;
 	return tobe32(*h_addr);
 }
 

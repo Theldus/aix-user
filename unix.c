@@ -167,6 +167,29 @@ u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym)
 }
 
 /**
+ * @brief Initialize SPRG registers.
+ *
+ * AIX 7.3 seems to make use of some SPRG registers that AIX 7.2
+ * dont, in special SPRG3. Per the lack of docs, I'm not entirely
+ * sure whats the usage of this register, but AIX's libc seems
+ * to set/toggle a value in a region pointed by SPRG3.
+ *
+ * Although not stated anywhere, I'm assuming that this *might*
+ * be related to some thread data, as this is common in other
+ * OSes to store this in a register, so I'm allocating an
+ * empty region and filling this register with this in
+ * order to make libc happy.
+ */
+void sprgs_init(uc_engine *uc) {
+	uc_err err;
+	u32 reg;
+	/* Init thread data region. */
+	reg = THREAD_ADDR + (THREAD_SIZE/2);
+	if ((err = uc_reg_write(uc, UC_PPC_REG_SPRG3, &reg)) != 0)
+		errx(1, "Unable to initialize USPRG3!\n");
+}
+
+/**
  * @brief Initialize the Unicorn's CPU with common/default register values.
  * @param uc Unicorn context.
  */
@@ -266,6 +289,8 @@ void unix_init(uc_engine *uc)
 	next_data_idx  = 0;
 	next_data_addr = UNIX_DATA_ADDR;
 
+	/* Init special registers. */
+	sprgs_init(uc);
 	/* Initial registers values. */
 	registers_init(uc);
 	/* Add milicode functions. */

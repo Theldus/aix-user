@@ -54,6 +54,10 @@ struct mm_region {
 #define STACK_ADDR 0x30000000
 #define STACK_SIZE (32ULL*1024*1024)  /* bytes. */
 
+/* Thread data, right after stack. */
+#define THREAD_ADDR STACK_ADDR
+#define THREAD_SIZE (65536) /* 64 KiB. */
+
 /* Dynamic memory: (s)brk/mmap/... */
 #define HEAP_ADDR 0x40000000 /* Starts at 1GiB. */ 
 #define HEAP_SIZE 0x40000000 /* 1GiB.           */

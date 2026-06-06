@@ -29,6 +29,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Setup AIX libs
       run: |
@@ -39,11 +41,11 @@ jobs:
         tar xvf .deps/aix-libs.tar.gz -C .deps/
         cp .deps/coreutils_7.2_tl04_sp2/libs/* .libs
 
-    - name: Resolve Unicorn fork commit
+    - name: Resolve Unicorn submodule commit
       id: unicorn-rev
       run: |
-        SHA=$(git ls-remote https://github.com/Theldus/unicorn.git aix-user | cut -f1)
-        echo "Latest aix-user commit: $SHA"
+        SHA=$(git rev-parse HEAD:unicorn)
+        echo "Pinned unicorn commit: $SHA"
         echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
     - name: Cache Unicorn build
@@ -52,21 +54,6 @@ jobs:
       with:
         path: .deps-unicorn
         key: unicorn-${{ runner.os }}-${{ steps.unicorn-rev.outputs.sha }}
-
-    - name: Build Unicorn from fork
-      if: steps.cache-unicorn.outputs.cache-hit != 'true'
-      run: |
-        git clone --depth 1 --branch aix-user \
-          https://github.com/Theldus/unicorn.git unicorn-src
-        cd unicorn-src
-        cmake -B build \
-          -DUNICORN_ARCH=ppc \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DUNICORN_BUILD_TESTS=OFF \
-          -DCMAKE_INSTALL_LIBDIR=lib \
-          -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/.deps-unicorn"
-        cmake --build build -j"$(nproc)"
-        cmake --install build
 
     - name: Build and run tests
       run: make test

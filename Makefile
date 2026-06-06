@@ -79,22 +79,6 @@ endif
 	@echo "  CC      $@"
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
 
-# Rules for milicode build
-# Binaries are generated via:
-# (AIX)   gcc strlen.c -c -O3 (copy object to Linux)
-# (Linux) powerpc64-linux-gnu-objcopy -O binary --only-section=.text \
-#             strlen.o strlen.bin
-# (Linux) (Optional): to see flat bin contents:
-#         powerpc64-linux-gnu-objdump \
-#            -b binary -m powerpc:common -EB -D strlen.bin
-# Obs:
-# (Linux) file strlen.o
-# strlen.o: executable (RISC System/6000 V3.1) or obj module not stripped
-#          
-milicodes/%.h: milicodes/%.bin
-	@echo "  MILICODE      $@"
-	$(Q)xxd -c 4 -i $< > $@
-
 aix-user: $(OBJS)
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)

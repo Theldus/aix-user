@@ -82,10 +82,7 @@ endif
 #
 # Unicorn submodule build
 #
-unicorn/CMakeLists.txt:
-	@echo "  UNICORN SUBMODULE INIT"
-	$(Q)git submodule update --init --quiet
-unicorn/build/Makefile: unicorn/CMakeLists.txt
+.deps-unicorn/lib/libunicorn.a:
 	@echo "  UNICORN CONFIGURE"
 	$(Q)cmake -B unicorn/build -S unicorn \
 		-DUNICORN_ARCH=ppc \
@@ -93,7 +90,6 @@ unicorn/build/Makefile: unicorn/CMakeLists.txt
 		-DUNICORN_BUILD_TESTS=OFF \
 		-DCMAKE_INSTALL_LIBDIR=lib \
 		-DCMAKE_INSTALL_PREFIX="$(CURDIR)/.deps-unicorn"
-.deps-unicorn/lib/libunicorn.a: unicorn/build/Makefile
 	@echo "  UNICORN BUILD"
 	$(Q)cmake --build unicorn/build -j$$(nproc)
 	@echo "  UNICORN INSTALL"

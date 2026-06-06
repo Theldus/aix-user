@@ -345,8 +345,11 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 	 *
 	 */
 	for (i = 0; i < ldr->l_nsyms; i++) {
-		if (!(sym[i].l_symtype & L_EXPORT))
+		if (!(sym[i].l_symtype & L_EXPORT) &&
+		    !(sym[i].l_ifile == 0 && sym[i].l_smclass == XMC_RW))
+		{
 			continue;
+		}
 
 		sym[i].l_value += lc->deltas[ sym[i].l_secnum - 1 ];
 		LOADER("Fixing export, sym: %s, addr: 0x%08x\n", sym[i].u.l_strtblname,
@@ -394,8 +397,10 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 				       sym->u.l_strtblname, value, addend);
 			}
 
-			/* Local symbol - already relocated in symbol table. */
-			else if (sym->l_symtype & L_EXPORT) {
+			/* Local symbol, already relocated in symbol table. */
+			else if (sym->l_symtype & L_EXPORT ||
+				    (sym->l_ifile == 0 && sym->l_smclass == XMC_RW))
+			{
 				value = sym->l_value;
 				LOADER("Exported sym (%s), resolved, addr=0x%08x\n",
 				       sym->u.l_strtblname, value);

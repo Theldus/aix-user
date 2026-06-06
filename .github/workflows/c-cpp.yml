@@ -1,15 +1,13 @@
 #
 # aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
 # on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
-# Made by Theldus, 2025
+# Made by Theldus, 2025-2026
 #
 
 name: CI
 
 env:
   AIX_LIB: https://archive.org/download/coreutils_7.2_tl04_sp2.tar/coreutils_7.2_tl04_sp2.tar.gz
-  PKG_CONFIG_PATH: /home/runner/work/aix-user/aix-user/.deps-unicorn/lib/pkgconfig/
-  LD_LIBRARY_PATH: /home/runner/work/aix-user/aix-user/.deps-unicorn/lib/
 
 on:
   push:
@@ -35,8 +33,6 @@ jobs:
     - name: Setup AIX libs
       run: |
         pwd
-        echo "pkgconfig: $PKG_CONFIG_PATH"
-        echo "ldconfig: $LD_LIBRARY_PATH"
         mkdir .deps
         mkdir .libs
         wget $AIX_LIB -O .deps/aix-libs.tar.gz 

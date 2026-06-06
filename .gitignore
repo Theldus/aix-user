@@ -14,3 +14,4 @@ tools/aix-dump
 tools/aix-ldd
 examples/statx/reference
 examples/getdirent/reference
+.deps-unicorn/

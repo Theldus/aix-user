@@ -1,16 +1,16 @@
 #
 # aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
 # on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
-# Made by Theldus, 2025
+# Made by Theldus, 2025-2026
 #
 
 CC     ?= cc
-#CFLAGS += $(shell pkg-config --cflags unicorn) -g3 -Wall -Wno-unused-variable -fsanitize=address
-#LDLIBS += $(shell pkg-config --libs unicorn) -fsanitize=address
+#CFLAGS += -I$(CURDIR)/.deps-unicorn/include -g3 -Wall -Wno-unused-variable -fsanitize=address
+#LDLIBS +=   $(CURDIR)/.deps-unicorn/lib/libunicorn.a -fsanitize=address
 CFLAGS += -I$(CURDIR) -I$(CURDIR)/milicodes
 CFLAGS += -I$(CURDIR)/syscalls -I$(CURDIR)/syscalls/include
-CFLAGS += $(shell pkg-config --cflags unicorn) -O3 -Wall -Wno-unused-variable
-LDLIBS += $(shell pkg-config --libs unicorn)
+CFLAGS += -I$(CURDIR)/.deps-unicorn/include -O3 -Wall -Wno-unused-variable
+LDLIBS +=   $(CURDIR)/.deps-unicorn/lib/libunicorn.a
 
 OBJS  = aix-user.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
 OBJS += util.o milicodes/milicode.o insn_emu.o
@@ -78,6 +78,29 @@ endif
 %.o: %.c
 	@echo "  CC      $@"
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
+
+#
+# Unicorn submodule build
+#
+unicorn/CMakeLists.txt:
+	@echo "  UNICORN SUBMODULE INIT"
+	$(Q)git submodule update --init --quiet
+unicorn/build/Makefile: unicorn/CMakeLists.txt
+	@echo "  UNICORN CONFIGURE"
+	$(Q)cmake -B unicorn/build -S unicorn \
+		-DUNICORN_ARCH=ppc \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DUNICORN_BUILD_TESTS=OFF \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DCMAKE_INSTALL_PREFIX="$(CURDIR)/.deps-unicorn"
+.deps-unicorn/lib/libunicorn.a: unicorn/build/Makefile
+	@echo "  UNICORN BUILD"
+	$(Q)cmake --build unicorn/build -j$$(nproc)
+	@echo "  UNICORN INSTALL"
+	$(Q)cmake --install unicorn/build
+
+TOOL_OBJS = tools/aix-ar.o tools/aix-dump.o tools/aix-ldd.o
+$(OBJS) $(TOOL_OBJS): | .deps-unicorn/lib/libunicorn.a
 
 aix-user: $(OBJS)
 	@echo "  LINK    $@"

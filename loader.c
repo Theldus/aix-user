@@ -168,6 +168,45 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 }
 
 /**
+ * @brief Given a loaded XCOFF and a symbol name, iterates over the XCOFF
+ * symbol table looking for an equivalent '%symbol', if found, return
+ * that symbol.
+ *
+ * This is needed because AIX 7.3 decided it was fun to have the same symbol
+ * marked as import and export at the same time, so you need to be smart enough
+ * to find the proper symbol, instead of solely relying on the 'Symidx' provided
+ * by the relocation table.
+ *
+ * @param lc       Current loaded XCOFF file.
+ * @param sym_name Symbol name to look for.
+ *
+ * @return Returns the found symbol name, or NULL.
+ */
+static const struct xcoff_ldr_sym_tbl_hdr32 *
+find_shadow_import(const struct loaded_coff *lc, const char *sym_name)
+{
+	const struct xcoff_ldr_sym_tbl_hdr32 *sym;
+	const struct xcoff_ldr_hdr32 *ldr;
+	char shadow_sym[64] = {0};
+	u32 i;
+
+	shadow_sym[0] = '%';
+	strncat(shadow_sym+1, sym_name, sizeof shadow_sym - 2);
+
+	ldr = &lc->xcoff.ldr.hdr;
+	sym = lc->xcoff.ldr.symtbl;
+
+	for (i = 0; i < ldr->l_nsyms; i++) {
+		if (!(sym[i].l_symtype & L_IMPORT))
+			continue;
+		if (strcmp(shadow_sym, sym[i].u.l_strtblname))
+			continue;
+		return &sym[i];
+	}
+	return NULL;
+}
+
+/**
  * @brief Resolves an imported symbol for an already (or not) loaded
  * library/module.
  *
@@ -320,6 +359,7 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
  */
 static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 {
+	const struct xcoff_ldr_sym_tbl_hdr32 *shadow;
 	struct xcoff_ldr_sym_tbl_hdr32 *sym;
 	struct xcoff_ldr_rel_tbl_hdr32 *rt;
 	struct xcoff_ldr_hdr32 *ldr;
@@ -401,14 +441,24 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			else if (sym->l_symtype & L_EXPORT ||
 				    (sym->l_ifile == 0 && sym->l_smclass == XMC_RW))
 			{
-				value = sym->l_value;
+				shadow = find_shadow_import(lc, sym->u.l_strtblname);
+				if (shadow) {
+					LOADER(
+						"Symbol (%s) was shadowed by (%s), properly importing "
+						"it... addr: %x\n",
+						shadow->u.l_strtblname, sym->u.l_strtblname, addr);
+					value = resolve_import(uc, shadow, lc); /* no addend. */
+				}
+				else
+					value = sym->l_value;
+
 				LOADER("Exported sym (%s), resolved, addr=0x%08x\n",
 				       sym->u.l_strtblname, value);
 			}
 		}
 
-		LOADER("Writing resolved symbol: v=0x%08x, addr=0x%08x\n",
-			value, addr);
+		LOADER("Writing resolved symbol (%s): v=0x%08x, addr=0x%08x\n",
+			sym->u.l_strtblname, value, addr);
 	
 		if (mm_write_u32(addr, value) < 0)
 			errx(1, "Unable to write address relocated into 0x%x\n", addr);	

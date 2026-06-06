@@ -193,6 +193,7 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	struct loaded_coff *imp_lc;
 	union xcoff_impid *cur_id;
 	const char *sym;
+	const char *tsym;
 	int i;
 
 	INCREASE_DEPTH;
@@ -261,8 +262,17 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 
 	for (i = 0; i < imp_ldr->l_nsyms; i++) {
 
+		/*
+		 * Re-exported/passthrough symbols might appear as %symbols
+		 * too, so we need to ensure the comparison is fair from
+		 * the beginning.
+		 */
+		tsym = imp_sym[i].u.l_strtblname;
+		if (*tsym == '%')
+			tsym++;
+
 		/* SKip symbols that do not match our search. */
-		if (strcmp(sym, imp_sym[i].u.l_strtblname))
+		if (strcmp(sym, tsym))
 			continue;
 
 		/* Check if this is a passthrough/re-exported symbol */

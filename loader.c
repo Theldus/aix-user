@@ -168,6 +168,41 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 }
 
 /**
+ * @brief Initialize the shadowed symbols hashtable.
+ *
+ * @param lc Current loaded XCOFF file.
+ */
+static void init_shadowed_symbol_list(struct loaded_coff *lc)
+{
+	const struct xcoff_ldr_sym_tbl_hdr32 *sym;
+	const struct xcoff_ldr_hdr32 *ldr;
+	khint_t it;
+	int ret;
+	u32 i;
+
+	lc->shadowed_symbols = kh_init(ssyms);
+	if (!lc->shadowed_symbols)
+		errx(1, "Unable to initialize shadowed symbol list!\n");
+
+	ldr = &lc->xcoff.ldr.hdr;
+	sym = lc->xcoff.ldr.symtbl;
+
+	for (i = 0; i < ldr->l_nsyms; i++) {
+		if (!(sym[i].l_symtype & L_IMPORT))
+			continue;
+		if (*sym[i].u.l_strtblname != '%')
+			continue;
+
+		it = kh_put(ssyms, lc->shadowed_symbols, sym[i].u.l_strtblname+1, &ret);
+		if (ret < 0)
+			errx(1, "Unable to add symbol (%s) into the list\n",
+				sym[i].u.l_strtblname);
+
+		kh_val(lc->shadowed_symbols, it) = &sym[i];
+	}
+}
+
+/**
  * @brief Given a loaded XCOFF and a symbol name, iterates over the XCOFF
  * symbol table looking for an equivalent '%symbol', if found, return
  * that symbol.
@@ -186,24 +221,14 @@ static const struct xcoff_ldr_sym_tbl_hdr32 *
 find_shadow_import(const struct loaded_coff *lc, const char *sym_name)
 {
 	const struct xcoff_ldr_sym_tbl_hdr32 *sym;
-	const struct xcoff_ldr_hdr32 *ldr;
-	char shadow_sym[64] = {0};
-	u32 i;
+	khint_t it;
 
-	shadow_sym[0] = '%';
-	strncat(shadow_sym+1, sym_name, sizeof shadow_sym - 2);
+	it = kh_get(ssyms, lc->shadowed_symbols, sym_name);
+	if (it == kh_end(lc->shadowed_symbols))
+		return NULL;
 
-	ldr = &lc->xcoff.ldr.hdr;
-	sym = lc->xcoff.ldr.symtbl;
-
-	for (i = 0; i < ldr->l_nsyms; i++) {
-		if (!(sym[i].l_symtype & L_IMPORT))
-			continue;
-		if (strcmp(shadow_sym, sym[i].u.l_strtblname))
-			continue;
-		return &sym[i];
-	}
-	return NULL;
+	sym = kh_val(lc->shadowed_symbols, it);
+	return sym;
 }
 
 /**
@@ -583,6 +608,9 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 		uc_reg_write(uc, UC_PPC_REG_2, &lcoff->toc_anchor);
 
 	push_coff(lcoff);
+
+	/* Init shadowed symbols table. */
+	init_shadowed_symbol_list(lcoff);
 
 	/* Fix relocs. */
 	process_relocations(uc, lcoff);

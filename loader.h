@@ -11,10 +11,13 @@
 
 #include "bigar.h"
 #include "xcoff.h"
+#include "third_party/khash.h"
 
 #define TEXT_DELTA 0
 #define DATA_DELTA 1
 #define BSS_DELTA  2
+
+KHASH_MAP_INIT_STR(ssyms, const struct xcoff_ldr_sym_tbl_hdr32 *);
 
 struct loaded_coff {
 	/* Loaded bin info. */
@@ -33,6 +36,9 @@ struct loaded_coff {
 
 	/* List. */
 	struct loaded_coff *next;
+
+	/* Shadowed symbols list. */
+	khash_t(ssyms) *shadowed_symbols;
 };
 
 extern struct loaded_coff *load_xcoff_file(uc_engine *uc, const char *bin,

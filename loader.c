@@ -168,66 +168,80 @@ find_module(const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym,
 }
 
 /**
- * @brief Initialize the shadowed symbols hashtable.
+ * @brief Initialize the symbols list hashtable: initializes a normal/global
+ * symbol list and a shadowed symbols list, for better performance.
  *
  * @param lc Current loaded XCOFF file.
  */
-static void init_shadowed_symbol_list(struct loaded_coff *lc)
+static void init_symbol_list(struct loaded_coff *lc)
 {
 	const struct xcoff_ldr_sym_tbl_hdr32 *sym;
 	const struct xcoff_ldr_hdr32 *ldr;
+	const char *sym_name;
 	khint_t it;
 	int ret;
 	u32 i;
 
+	lc->symbols = kh_init(ssyms);
+	if (!lc->symbols)
+		errx(1, "Unable to initialize symbol table!\n");
+
 	lc->shadowed_symbols = kh_init(ssyms);
 	if (!lc->shadowed_symbols)
-		errx(1, "Unable to initialize shadowed symbol list!\n");
+		errx(1, "Unable to initialize shadowed symbol table!\n");
 
 	ldr = &lc->xcoff.ldr.hdr;
 	sym = lc->xcoff.ldr.symtbl;
 
 	for (i = 0; i < ldr->l_nsyms; i++) {
-		if (!(sym[i].l_symtype & L_IMPORT))
-			continue;
-		if (*sym[i].u.l_strtblname != '%')
-			continue;
+		sym_name = sym[i].u.l_strtblname;
 
-		it = kh_put(ssyms, lc->shadowed_symbols, sym[i].u.l_strtblname+1, &ret);
+		if (*sym_name == '%') {
+			sym_name++;
+			if (sym[i].l_symtype & L_IMPORT) {
+				it = kh_put(ssyms, lc->shadowed_symbols, sym_name, &ret);
+				if (ret < 0)
+					goto err;
+				kh_val(lc->shadowed_symbols, it) = &sym[i];
+			}
+		}
+
+		it = kh_put(ssyms, lc->symbols, sym_name, &ret);
 		if (ret < 0)
-			errx(1, "Unable to add symbol (%s) into the list\n",
-				sym[i].u.l_strtblname);
+			goto err;
 
-		kh_val(lc->shadowed_symbols, it) = &sym[i];
+		/* Silently ignore if there's an attempt to add a repeated symbol:
+		 * this might happen for the '%symbol' vs 'symbol' case. The later
+		 * do *not* helps us in anything, so I'm completely ignoring it.
+		 */
+		if (ret != 0)
+			kh_val(lc->symbols, it) = &sym[i];
 	}
+
+	return;
+err:
+	errx(1, "Unable to add symbol (%s) into the list\n", sym_name);
 }
 
 /**
- * @brief Given a loaded XCOFF and a symbol name, iterates over the XCOFF
- * symbol table looking for an equivalent '%symbol', if found, return
- * that symbol.
+ * @brief Look for a given symbol in a provided hashtable.
  *
- * This is needed because AIX 7.3 decided it was fun to have the same symbol
- * marked as import and export at the same time, so you need to be smart enough
- * to find the proper symbol, instead of solely relying on the 'Symidx' provided
- * by the relocation table.
- *
- * @param lc       Current loaded XCOFF file.
+ * @param list     Hashtable to look the symbol.
  * @param sym_name Symbol name to look for.
  *
  * @return Returns the found symbol name, or NULL.
  */
 static const struct xcoff_ldr_sym_tbl_hdr32 *
-find_shadow_import(const struct loaded_coff *lc, const char *sym_name)
+find_symbol(khash_t(ssyms) *list, const char *sym_name)
 {
 	const struct xcoff_ldr_sym_tbl_hdr32 *sym;
 	khint_t it;
 
-	it = kh_get(ssyms, lc->shadowed_symbols, sym_name);
-	if (it == kh_end(lc->shadowed_symbols))
+	it = kh_get(ssyms, list, sym_name);
+	if (it == kh_end(list))
 		return NULL;
 
-	sym = kh_val(lc->shadowed_symbols, it);
+	sym = kh_val(list, it);
 	return sym;
 }
 
@@ -253,7 +267,6 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	struct loaded_coff *cur_lc)
 {
 	const struct xcoff_ldr_sym_tbl_hdr32 *imp_sym;
-	const struct xcoff_ldr_hdr32 *imp_ldr;
 	struct loaded_coff *imp_lc;
 	union xcoff_impid *cur_id;
 	const char *sym;
@@ -311,10 +324,6 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	if (!imp_lc)
 		imp_lc = load_xcoff_file(uc, cur_id->l_impidbase, cur_id->l_impidmem, 0);
 
-	/* Look up for the symbol. */
-	imp_ldr = &imp_lc->xcoff.ldr.hdr;
-	imp_sym = imp_lc->xcoff.ldr.symtbl;
-
 	/* AIX's 7.3 libc for some reason appends symbols the char '%', and
 	 * these symbols are then imported from _shr.o. To handle this, we
 	 * simply check and disregard that symbol, since the symbol on _shr.o
@@ -324,48 +333,34 @@ resolve_import(uc_engine *uc, const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym,
 	if (*sym == '%')
 		sym++;
 
-	for (i = 0; i < imp_ldr->l_nsyms; i++) {
+	imp_sym = find_symbol(imp_lc->symbols, sym);
+	if (!imp_sym)
+		errx(1, "Unresolved symbol (%s) from (%s)!\n", cur_sym->u.l_strtblname,
+			cur_lc->name);
 
+	/* Check if this is a passthrough/re-exported symbol */
+	if (imp_sym->l_symtype & L_IMPORT) {
 		/*
-		 * Re-exported/passthrough symbols might appear as %symbols
-		 * too, so we need to ensure the comparison is fair from
-		 * the beginning.
+		 * This symbol is re-exported (passthrough).
+		 * Example: executable imports brk from libc, but libc also imports
+		 * brk from /unix. Recursively resolve from the original source.
 		 */
-		tsym = imp_sym[i].u.l_strtblname;
-		if (*tsym == '%')
-			tsym++;
+		LOADER("Passthrough symbol: %s, resolving from %s\n",
+			imp_sym->u.l_strtblname,
+			imp_lc->xcoff.ldr.impids[imp_sym->l_ifile].l_impidbase);
 
-		/* SKip symbols that do not match our search. */
-		if (strcmp(sym, tsym))
-			continue;
-
-		/* Check if this is a passthrough/re-exported symbol */
-		if (imp_sym[i].l_symtype & L_IMPORT) {
-			/*
-			 * This symbol is re-exported (passthrough).
-			 * Example: executable imports brk from libc, but libc also imports
-			 * brk from /unix. Recursively resolve from the original source.
-			 */
-			LOADER("Passthrough symbol: %s, resolving from %s\n",
-				imp_sym[i].u.l_strtblname,
-				imp_lc->xcoff.ldr.impids[imp_sym[i].l_ifile].l_impidbase);
-
-			return resolve_import(uc, &imp_sym[i], imp_lc);
-		}
-
-		/*
-		 * Note: AIX libraries export function descriptors (in .data) for functions,
-		 * not raw code addresses. So imp_sym[i].l_value points to the descriptor
-		 * (already relocated on load module), containing [func_addr, toc_anchor,
-		 * env]. Variables are exported as direct addresses. No distinction
-		 * needed here.
-		 */
-		DECREASE_DEPTH;
-		return imp_sym[i].l_value;
+		return resolve_import(uc, imp_sym, imp_lc);
 	}
 
-	errx(1, "Unresolved symbol (%s) from (%s)!\n", cur_sym->u.l_strtblname,
-		cur_lc->name);
+	/*
+	 * Note: AIX libraries export function descriptors (in .data) for functions,
+	 * not raw code addresses. So imp_sym[i].l_value points to the descriptor
+	 * (already relocated on load module), containing [func_addr, toc_anchor,
+	 * env]. Variables are exported as direct addresses. No distinction
+	 * needed here.
+	 */
+	DECREASE_DEPTH;
+	return imp_sym->l_value;
 }
 
 /**
@@ -466,7 +461,7 @@ static void process_relocations(uc_engine *uc, struct loaded_coff *lc)
 			else if (sym->l_symtype & L_EXPORT ||
 				    (sym->l_ifile == 0 && sym->l_smclass == XMC_RW))
 			{
-				shadow = find_shadow_import(lc, sym->u.l_strtblname);
+				shadow = find_symbol(lc->shadowed_symbols, sym->u.l_strtblname);
 				if (shadow) {
 					LOADER(
 						"Symbol (%s) was shadowed by (%s), properly importing "
@@ -609,8 +604,8 @@ load_xcoff_file(uc_engine *uc, const char *bin, const char *member, int is_exe)
 
 	push_coff(lcoff);
 
-	/* Init shadowed symbols table. */
-	init_shadowed_symbol_list(lcoff);
+	/* Init symbols table. */
+	init_symbol_list(lcoff);
 
 	/* Fix relocs. */
 	process_relocations(uc, lcoff);

@@ -37,7 +37,9 @@ struct loaded_coff {
 	/* List. */
 	struct loaded_coff *next;
 
-	/* Shadowed symbols list. */
+	/* Import symbols list. */
+	khash_t(ssyms) *symbols;          /* All symbols (except the ones that shadows
+	                                     the '%symbols', these are not added) */
 	khash_t(ssyms) *shadowed_symbols;
 };
 

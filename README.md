@@ -4,7 +4,8 @@
 <br/>
 <br/>
 A public-domain PoC/attempt to run 32-bit AIX binaries on Linux via Unicorn, 
-same idea as qemu-user, but for AIX+PPC
+same idea as qemu-user, but for AIX+PPC, with tested support for AIX 7.2
+and 7.3 (WIP).
 
 ## Why?
 The idea came when I participated in a project where we needed to move an 
@@ -159,8 +160,8 @@ Since the scope is huge and AIX has hundreds of undocumented syscalls (and
 other features), the approach is 'binary-based': when the support for a new 
 binary is wanted, new features are brought in to support that specific binary.
 
-**Currently tested binaries:** All binaries under [examples/], plus: `ar`,
-`cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
+**Currently tested binaries (AIX 7.2):** All binaries under [examples/], plus:
+`ar`, `cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
 `kill`, `od`, `printf`, `pwd`, `rm`, `sed`, `sleep`, `tail`, `tee`, `test`,
 `tr`, `uname`, `uniq`, `wc`, `yes`.
 
@@ -315,14 +316,13 @@ whether with issues, documentation, testing, new features, bugfixes, typos, and
 etc. Welcome aboard.
 
 This project is largely built through reverse engineering due to limited public 
-documentation on AIX internals. If you have real-world AIX experience, or 
-knowledge of AIX's internals (such as ABI, syscall behavior, XCOFF formats, and 
-etc), your contributions would be particularly valuable.
+documentation on AIX internals. If you have knowledge of AIX's internals (such
+as ABI, syscall behavior, XCOFF formats, and  etc), your contributions would be
+particularly valuable.
 
 ## License
-`aix-user` is licensed under the Unlicense (public domain). Written by Davidson 
-Francis and
-(hopefully) other contributors.
+`aix-user` is licensed under the Unlicense (public domain), but depends on khash
+(MIT). Written by Davidson  Francis and (hopefully) other contributors.
 
 [emulate it via Qemu]: https://astr0baby.wordpress.com/2018/11/04/running-aix-7-2-tl3sp1-on-x86_64-via-qemu-system-ppc64/
 [Unicorn]: https://github.com/unicorn-engine/unicorn

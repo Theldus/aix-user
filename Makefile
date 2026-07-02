@@ -64,7 +64,7 @@ ifeq ($(V), 1)
 	Q :=
 endif
 
-.PHONY: all clean test install
+.PHONY: all clean tests install
 all: aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
 
 # Paths
@@ -114,13 +114,13 @@ tools/aix-ldd: tools/aix-ldd.o xcoff.o bigar.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-examples/statx/reference: examples/statx/reference.c
+tests/statx/reference: tests/statx/reference.c
 	@echo "  LINK    $@"
 	$(Q)$(CC) -o $@ $^
 
-test: aix-user examples/statx/reference examples/getdirent/reference
+tests: aix-user tests/statx/reference tests/getdirent/reference
 	@echo "[+] Running tests..."
-	$(Q)bash $(CURDIR)/examples/test.sh
+	$(Q)bash $(CURDIR)/tests/tests.sh
 
 install: aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
 	@echo "  INSTALL    $@"
@@ -144,5 +144,5 @@ clean:
 	rm -f tools/ar
 	rm -f tools/dump
 	rm -f tools/ldd
-	rm -f examples/statx/reference
-	rm -f examples/getdirent/reference
+	rm -f tests/statx/reference
+	rm -f tests/getdirent/reference

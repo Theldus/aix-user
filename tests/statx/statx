@@ -9,7 +9,6 @@
 CURDIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOTDIR="${CURDIR}/../../"
 AIX_USER="${ROOTDIR}/aix-user"
-LIBS="${ROOTDIR}/.libs"
 
 cd "${CURDIR}"
 
@@ -25,7 +24,7 @@ function run_test() {
 	printf "  statx #${test_num} (${aix_variant})... "
 
 	# Run AIX version via emulator
-	"${AIX_USER}" -L "${LIBS}" test_statx "${aix_variant}" "${target}" &> "out_aix"
+	"${AIX_USER}" test_statx "${aix_variant}" "${target}" &> "out_aix"
 	aix_rc=$?
 
 	# Run Linux reference

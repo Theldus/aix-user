@@ -7,9 +7,18 @@
 #
 
 CURDIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ROOTDIR="${CURDIR}/../"
+ROOTDIR="${CURDIR}/.."
 any_error=0
 test_num=0
+
+if [[ -z "${AIX_USER_LIB_PATH}" || ! -d "${AIX_USER_LIB_PATH}" ]];
+then
+	export AIX_USER_LIB_PATH="${ROOTDIR}/.libs"
+	echo "AIX_USER_LIB_PATH not set and/or not exist!, setting one..."
+	echo "  using: ${AIX_USER_LIB_PATH}"
+else
+	echo "Using ${AIX_USER_LIB_PATH} for the library path"
+fi
 
 function do_test() {
 	local name="$1"     # Test name
@@ -21,7 +30,7 @@ function do_test() {
 
 	pushd . &>/dev/null
 	cd "${CURDIR}/${name}"
-	"${ROOTDIR}/aix-user" -L "${ROOTDIR}/.libs" "${name}" "$@" > out
+	"${ROOTDIR}/aix-user" "${name}" "$@" > out
 	rc="$?"
 	if [ "${rc}" -ne "${exp_rc}" ]; then
 		echo "[${name}] produced wrong ret code, expected: ${exp_rc}"
@@ -49,7 +58,7 @@ function do_test_without_out_comparison() {
 
 	pushd . &>/dev/null
 	cd "${CURDIR}/${name}"
-	"${ROOTDIR}/aix-user" -L "${ROOTDIR}/.libs" "${name}" "$@" > out
+	"${ROOTDIR}/aix-user" "${name}" "$@" > out
 	rc="$?"
 	if [ "${rc}" -ne "${exp_rc}" ]; then
 		echo "[${name}] produced wrong ret code, expected: ${exp_rc}"

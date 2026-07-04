@@ -113,8 +113,10 @@ u32 handle_unix_imports(const struct xcoff_ldr_sym_tbl_hdr32 *cur_sym)
 	 * Not all syscall handlers are marked as syscalls, but just a normal
 	 * function descriptor.
 	 */
-	if (cur_sym->l_smclass & (XMC_DS|XMC_SV|XMC_SV3264))
+	if ((cur_sym->l_smclass & (XMC_DS|XMC_SV|XMC_SV3264)) ||
+		syscall_get_hndlr(sym_name)) {
 		return syscall_register(sym_name);
+	}
 
 	/* Normal data (Unclassified+RW), such as environ, errno... */
 	if (cur_sym->l_smclass & (XMC_UA|XMC_RW)) {

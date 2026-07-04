@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 /*
@@ -14,6 +14,7 @@
 #include "syscalls.h"
 #include "mm.h"
 #include "util.h"
+#include "third_party/khash.h"
 
 /**
  * AIX syscall entry point address.
@@ -67,18 +68,10 @@ typedef int (*syscall_fn)(uc_engine *uc);
  * to function descriptors and syscall implementations.
  */
 struct unix_syscall_entry {
-	const char *sym_name;  /* Symbol name (e.g., "kwrite", "_exit").     */
-	int sys_table_idx;     /* Index in sys_table[] (-1 if unimplemented).*/
-	u32 desc_addr;         /* VM address of function descriptor.         */
-};
-
-/**
- * Syscall implementation table entry.
- * Maps syscall names to their implementation functions.
- */
-struct sys_table_entry {
-	const char *name;   /* Syscall name.                    */
-	syscall_fn handler; /* Implementation function pointer. */
+	/* Index in sys_table[] (NULL if unimplemented).*/
+	const struct sys_table_entry *entry;
+	const char *sym_name;  /* Symbol name (e.g., "kwrite", "_exit").  */
+	u32 desc_addr;         /* VM address of function descriptor.      */
 };
 
 /* Unicorn engine instance (initialized in syscalls_init). */
@@ -159,6 +152,30 @@ static struct sys_table_entry sys_table[] = {
 	{"kwaitpid",       aix_kwaitpid},
 	{"kwaitpid64",     aix_kwaitpid64},
 };
+
+KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);
+khash_t(systable) *kh_systable;
+
+/**
+ * @brief For a given symbol name pointed by @p sym_name
+ * returns a 'struct sys_table_entry' if there is an
+ * implementation for that syscall, NULL otherwise.
+ *
+ * @param sym_name Symbol to lookup.
+ * @return Returns the syscall entry if found, NULL if
+ * there is none available.
+ */
+const struct sys_table_entry *syscall_get_hndlr(const char *sym_name) {
+	const struct sys_table_entry *entry;
+	khint_t it;
+
+	it = kh_get(systable, kh_systable, sym_name);
+	if (it == kh_end(kh_systable))
+		return NULL;
+
+	entry = kh_val(kh_systable, it);
+	return entry;
+}
 
 /**
  * @brief Read a PowerPC General Purpose Register.
@@ -242,7 +259,7 @@ u32 syscall_register(const char *sym_name)
 	int i;
 	int idx;
 	u32 *h_desc;
-	size_t table_size;
+	const struct sys_table_entry *entry;
 
 	/*
 	 * Check if this symbol already has a descriptor to avoid duplicates.
@@ -270,25 +287,22 @@ u32 syscall_register(const char *sym_name)
 	
 	h_desc[0] = tobe32(SYSCALL_ADDR);  /* Entry point: 0x3700            */
 	h_desc[1] = tobe32(idx);           /* TOC/syscall index              */
-	h_desc[2] = h_desc[1];            /* Environment (same as TOC)      */
+	h_desc[2] = h_desc[1];             /* Environment (same as TOC)      */
 
 	/* Register the new syscall. */
-	unix_syscalls[idx].sym_name      = sym_name;
-	unix_syscalls[idx].desc_addr     = next_desc_addr;
-	unix_syscalls[idx].sys_table_idx = -1;
+	unix_syscalls[idx].sym_name  = sym_name;
+	unix_syscalls[idx].desc_addr = next_desc_addr;
+	unix_syscalls[idx].entry     = NULL;
 	next_desc_addr += 12; /* Each descriptor is 12 bytes (3 words) */
 
 	SYS("Created /unix descriptor for '%s': desc=0x%x, index=%d\n",
 	    sym_name, unix_syscalls[idx].desc_addr, idx);
 
 	/* Check if we have an implementation for this syscall. */
-	table_size = sizeof(sys_table) / sizeof(sys_table[0]);
-	for (i = 0; i < (int)table_size; i++) {
-		if (strcmp(sym_name, sys_table[i].name) == 0) {
-			unix_syscalls[idx].sys_table_idx = i;
-			SYS("Symbol/syscall '%s' found in sys_table!\n", sym_name);
-			break;
-		}
+	entry = syscall_get_hndlr(sym_name);
+	if (entry) {
+		unix_syscalls[idx].entry = entry;
+		SYS("Symbol/syscall '%s' found in sys_table!\n", sym_name);
 	}
 
 	return unix_syscalls[idx].desc_addr;
@@ -334,14 +348,14 @@ static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
 	    addr, sys_nr, sys->sym_name);
 
 	/* Check if we have an implementation for this syscall. */
-	if (sys->sys_table_idx < 0) {
+	if (!sys->entry) {
 		warn(">>> UNIMPLEMENTED SYSCALL: '%s' <<<\n", sys->sym_name);
 		write_ret_value((u32)-1);
 		return;
 	}
 
 	/* Dispatch to the handler and write return value. */
-	ret = sys_table[sys->sys_table_idx].handler(uc);
+	ret = sys->entry->handler(uc);
 	write_ret_value(ret);
 }
 
@@ -359,8 +373,11 @@ static void syscall_handler(uc_engine *uc, uint64_t addr, uint32_t size,
  */
 void syscalls_init(uc_engine *uc)
 {
+	khint_t it;
 	uc_err err;
 	char *h_sys;
+	size_t i;
+	int ret;
 
 	if (!uc)
 		errx(1, "syscalls_init: NULL uc_engine pointer\n");
@@ -382,4 +399,16 @@ void syscalls_init(uc_engine *uc)
 	if (err)
 		errx(1, "Failed to install syscall hook: %s\n",
 		     uc_strerror(err));
+
+	/* Initialize syscall hashtable. */
+	kh_systable = kh_init(systable);
+	if (!kh_systable)
+		errx(1, "Unable to initialize syscall hash table!\n");
+
+	for (i = 0; i < sizeof(sys_table) / sizeof(sys_table[0]); i++) {
+		it = kh_put(systable, kh_systable, sys_table[i].name, &ret);
+		if (ret < 0)
+			errx(1, "Failed to add element into the syscall htable!\n");
+		kh_val(kh_systable, it) = &sys_table[i];
+	}
 }

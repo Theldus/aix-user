@@ -22,6 +22,24 @@
     } \
   } while(0)
 
+/**
+ * Syscall implementation function pointer type.
+ * All syscall handlers must match this signature.
+ *
+ * @return Return value to be placed in r3 (or -1 on error).
+ */
+typedef int (*syscall_fn)(uc_engine *uc);
+
+/**
+ * Syscall implementation table entry.
+ * Maps syscall names to their implementation functions.
+ */
+struct sys_table_entry {
+	const char *name;   /* Syscall name.                    */
+	syscall_fn handler; /* Implementation function pointer. */
+};
+
+const struct sys_table_entry *syscall_get_hndlr(const char *sym_name);
 extern void syscalls_init(uc_engine *uc);
 extern u32 syscall_register(const char *sym_name);
 

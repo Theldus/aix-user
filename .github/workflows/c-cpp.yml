@@ -56,4 +56,4 @@ jobs:
         key: unicorn-${{ runner.os }}-${{ steps.unicorn-rev.outputs.sha }}
 
     - name: Build and run tests
-      run: make test
+      run: make tests

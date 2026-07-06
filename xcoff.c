@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #include <sys/mman.h>
@@ -618,15 +618,14 @@ static int xcoff_read_hdrs(struct xcoff *xcoff)
  * Performs initial validation, reads file header, and parses all remaining
  * headers. Used for loading XCOFF files from memory or archive members.
  *
- * @param fd    File descriptor (for reference, not used directly).
  * @param buff  Buffer containing the XCOFF file data.
  * @param size  Size of the buffer in bytes.
  * @param xcoff XCOFF32 structure to populate.
  * @return 0 on success, -1 on error.
  */
-int xcoff_load(int fd, const char *buff, size_t size, struct xcoff *xcoff)
+int xcoff_load(const char *buff, size_t size, struct xcoff *xcoff)
 {
-	if (!buff || !xcoff || !size || fd < 0)
+	if (!buff || !xcoff || !size)
 		return -1;
 
 	xcoff->file_size = size;
@@ -680,7 +679,11 @@ int xcoff_open(const char *bin, struct xcoff *xcoff)
 		return -1;
 	}
 
-	return xcoff_load(fd, buff, st.st_size, xcoff);
+	/* After a successful mmap(), there's no need to keep the
+	 * file opened. */
+	close(fd);
+
+	return xcoff_load(buff, st.st_size, xcoff);
 }
 
 /**
@@ -691,8 +694,6 @@ void xcoff_close(const struct xcoff *xcoff)
 {
 	if (!xcoff)
 		return;
-	if (xcoff->buff) {
+	if (xcoff->buff)
 		munmap((char*)xcoff->buff, xcoff->file_size);
-		close(xcoff->fd);
-	}
 }

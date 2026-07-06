@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #include <sys/mman.h>
@@ -526,7 +526,7 @@ load_xcoff_or_bigar(const char *bin, const char *member, struct loaded_coff *lc)
 		if (!buff) {
 			errx(1, "Unable to extract member (%s) from (%s)!\n", member, bin);
 		}
-		if (xcoff_load(lc->bar.fd, buff, size, &lc->xcoff) < 0)
+		if (xcoff_load(buff, size, &lc->xcoff) < 0)
 			errx(1, "Unable to load member (%s) from XCOFF file (%s)!\n",
 				member, bin);
 	}

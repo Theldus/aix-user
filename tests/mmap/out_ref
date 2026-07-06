@@ -72,7 +72,7 @@
   -> Munmap result: [PASS] (expected failure, errno=22: Invalid argument)
 
 [TEST #13] file-backed RO mapping (8KiB, pattern 0x42)
-  addr=0  len=8192  prot=0x1  flags=0x2  fd=6  off=0
+  addr=0  len=8192  prot=0x1  flags=0x2  fd=3  off=0
   -> Allocated at c0000000
   -> Allocate result: [PASS]
   -> File-backed RO content: [PASS]
@@ -82,7 +82,7 @@
   -> Munmap result: [PASS]
 
 [TEST #15] file-backed RW mapping (4KiB)
-  addr=0  len=4096  prot=0x3  flags=0x1  fd=6  off=0
+  addr=0  len=4096  prot=0x3  flags=0x1  fd=3  off=0
   -> Allocated at c0000000
   -> Write-back check: [PASS] (4096 bytes)
   -> Allocate result: [PASS]

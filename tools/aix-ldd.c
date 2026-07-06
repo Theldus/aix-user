@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #include <sys/stat.h>
@@ -243,7 +243,7 @@ static int open_xcoff_file(const char *bin, const char *member,
 		return -1;
 	}
 
-	if (xcoff_load(bar->fd, buff, size, xcoff) < 0) {
+	if (xcoff_load(buff, size, xcoff) < 0) {
 		fprintf(stderr, "Unable to load XCOFF from member '%s'\n",
 			member);
 		ar_close(bar);

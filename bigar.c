@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #include <sys/mman.h>
@@ -276,6 +276,7 @@ static int ar_read_filehdr(const char *bin, struct big_ar *ar)
  */
 int ar_open(const char *bin, struct big_ar *ar)
 {
+	int fd;
 	int ret;
 	struct stat st = {0};
 
@@ -284,14 +285,14 @@ int ar_open(const char *bin, struct big_ar *ar)
 	if (!ar)
 		return ret;
 
-	ar->fd = open(bin, O_RDONLY);
-	if (ar->fd < 0) {
+	fd = open(bin, O_RDONLY);
+	if (fd < 0) {
 		warn("Unable to open file!\n");
 		return ret;
 	}
 
-	fstat(ar->fd, &st);
-	ar->buff = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, ar->fd, 0);
+	fstat(fd, &st);
+	ar->buff = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (ar->buff == MAP_FAILED) {
 		warn("Unable to mmap xcoff file!\n");
 		return ret;
@@ -309,6 +310,10 @@ int ar_open(const char *bin, struct big_ar *ar)
 		return ret;
 	}
 
+	/* After a successful mmap(), there's no need to keep the
+	 * file opened. */
+	close(fd);
+
 	ret = 0;
 	return ret;
 }
@@ -320,8 +325,6 @@ void ar_close(const struct big_ar *ar)
 {
 	if (!ar)
 		return;
-	if (ar->buff) {
+	if (ar->buff)
 		munmap(ar->buff, ar->file_size);
-		close(ar->fd);
-	}
 }

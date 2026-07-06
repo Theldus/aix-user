@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #ifndef BIGAR_H
@@ -80,7 +80,6 @@ struct ar_memb_hdr_mem {
  * Big AR data
  */ 
 struct big_ar {
-	int  fd;
 	char *buff;
 	char *ar_path;
 	size_t file_size;

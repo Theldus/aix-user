@@ -1,7 +1,7 @@
 /**
  * aix-user: a public-domain PoC/attempt to run 32-bit AIX binaries
  * on Linux via Unicorn, same idea as 'qemu-user', but for AIX+PPC
- * Made by Theldus, 2025
+ * Made by Theldus, 2025-2026
  */
 
 #ifndef AIX_COFF_H
@@ -208,7 +208,6 @@ union xcoff_impid {
  * XCOFF32 data
  */
 struct xcoff {
-	int    fd;
 	const char *buff;
 	size_t file_size;
 	struct xcoff_file_hdr32 hdr; /* File header.      */
@@ -236,7 +235,7 @@ extern void xcoff_print_sechdrs(const struct xcoff *xcoff);
 extern int  xcoff_read_ldrhdr(struct xcoff *xcoff);
 extern void xcoff_print_ldr(const struct xcoff *xcoff);
 extern u32  xcoff_get_entrypoint(const struct xcoff *xcoff);
-extern int xcoff_load(int fd, const char *buff, size_t size, struct xcoff *xcoff);
+extern int xcoff_load(const char *buff, size_t size, struct xcoff *xcoff);
 extern int  xcoff_open(const char *bin, struct xcoff *xcoff);
 extern void xcoff_close(const struct xcoff *xcoff);
 

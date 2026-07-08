@@ -7,7 +7,7 @@
 name: CI
 
 env:
-  AIX_LIB: https://archive.org/download/coreutils_7.2_tl04_sp2.tar/coreutils_7.2_tl04_sp2.tar.gz
+  AIX_LIB: ${{ secrets.AIX_LIB }}
 
 on:
   push:
@@ -36,10 +36,12 @@ jobs:
       run: |
         pwd
         mkdir .deps
-        mkdir .libs
-        wget $AIX_LIB -O .deps/aix-libs.tar.gz 
+        mkdir .libs72
+        mkdir .libs73
+        wget -q $AIX_LIB -O .deps/aix-libs.tar.gz
         tar xvf .deps/aix-libs.tar.gz -C .deps/
-        cp .deps/coreutils_7.2_tl04_sp2/libs/* .libs
+        mv .deps/aix_7.2_7.3/7.2_TL04/libs/*     .libs72
+        mv .deps/aix_7.2_7.3/7.3_TL03_SP2/libs/* .libs73
 
     - name: Resolve Unicorn submodule commit
       id: unicorn-rev
@@ -55,5 +57,8 @@ jobs:
         path: .deps-unicorn
         key: unicorn-${{ runner.os }}-${{ steps.unicorn-rev.outputs.sha }}
 
-    - name: Build and run tests
-      run: make tests
+    - name: Build and run tests (AIX 7.2)
+      run: AIX_USER_LIB_PATH=$PWD/.libs72 make tests
+
+    - name: Run tests (AIX 7.3)
+      run: AIX_USER_LIB_PATH=$PWD/.libs73 make tests

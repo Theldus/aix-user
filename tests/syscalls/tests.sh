@@ -7,7 +7,7 @@
 #
 
 CURDIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ROOTDIR="${CURDIR}/.."
+ROOTDIR="${CURDIR}/../.."
 any_error=0
 test_num=0
 

@@ -1,0 +1,21 @@
+halt 4
+setopt r/o->w 
+setfflag 4
+savename hello_world
+filelist 7 1
+i ../../../.libs72/crt0.o
+i ../../../.libs72/crtcxa.o
+i ../../../.libs72/crtdbase.o
+i ../../../.libs72/libgcc.a
+i ../../../.libs72/libgcc_eh.a
+i hello_world.o
+lib ../../../.libs72/libc.a
+resolve
+addgl ../../../.libs72/glink.o
+er full
+mismatch
+comprld
+origin page 0x10000000 0x20000000
+libpath /opt/freeware/lib/gcc/powerpc-ibm-aix7.2.0.0/13:/opt/freeware/lib/gcc/powerpc-ibm-aix7.2.0.0/13/../../..:/opt/freeware/lib:/usr/lib:/lib
+save 1L .
+rc

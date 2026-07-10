@@ -64,7 +64,7 @@ ifeq ($(V), 1)
 	Q :=
 endif
 
-.PHONY: all clean tests install
+.PHONY: all clean test-syscalls test-coreutils install
 all: aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
 
 # Paths
@@ -118,9 +118,13 @@ tests/statx/reference: tests/statx/reference.c
 	@echo "  LINK    $@"
 	$(Q)$(CC) -o $@ $^
 
-tests: aix-user tests/syscalls/statx/reference tests/syscalls/getdirent/reference
-	@echo "[+] Running tests..."
+test-syscalls: aix-user tests/syscalls/statx/reference tests/syscalls/getdirent/reference
+	@echo "[+] Running syscalls tests..."
 	$(Q)bash $(CURDIR)/tests/syscalls/tests.sh
+
+test-coreutils:
+	@echo "[+] Running coreutils tests..."
+	$(Q)bash $(CURDIR)/tests/coreutils/test_coreutils.sh
 
 install: aix-user tools/aix-ar tools/aix-dump tools/aix-ldd
 	@echo "  INSTALL    $@"

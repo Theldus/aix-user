@@ -38,8 +38,10 @@ jobs:
       with:
         path: |
           .libs72
+          .bins72
           .libs73
-        key: aix-libs-v1
+          .bins73
+        key: aix-libs-v1.1
 
     - name: Setup AIX libs
       if: steps.cache-aix-libs.outputs.cache-hit != 'true'

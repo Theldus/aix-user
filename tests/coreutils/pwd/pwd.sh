@@ -17,5 +17,6 @@ function do_test() {
 
 	if [[ "${au}" != ${ln} ]]; then
 		failed "PWD does not match! (${au}) / (${ln})"
+		return 1
 	fi
 }

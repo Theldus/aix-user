@@ -13,5 +13,6 @@ function do_test() {
 	aix-user ${BIN} -n -o -r -c ../../syscalls/args_env/args_env > out
 	if ! cmp -s out out_ref; then
 		failed "output for dump differs from expected!"
+		return 1
 	fi
 }

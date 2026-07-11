@@ -20,6 +20,7 @@ function do_test() {
 	diff=$((diff * ((diff>0) - (diff<0))))
 	if [[ ${diff} > 10 ]]; then
 		failed "epoch difference is greater than 10s: (${au} / ${ln})"
+		return 1
 	fi
 
 	# Some flags test (e.g., Fri 10 Jul 26)
@@ -27,5 +28,6 @@ function do_test() {
 	ln=$(TZ=UTC date +"%a %d %h %y")
 	if [[ "${au}" != ${ln} ]]; then
 		failed "formatted date does not match! (${au}) / (${ln})"
+		return 1
 	fi
 }

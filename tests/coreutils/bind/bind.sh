@@ -39,6 +39,7 @@ function do_test() {
 
 	if [[ ! -f hello_world.o ]]; then
 		failed "error while assembling the test file, aborting..."
+		return 1
 	fi
 
 	# Link the file
@@ -46,6 +47,7 @@ function do_test() {
 	if [[ ! -f hello_world ]]; then
 		cleanup
 		failed "error while linking the test file, aborting..."
+		return 1
 	fi
 
 	# Execute the program and show its output
@@ -53,6 +55,7 @@ function do_test() {
 	if [[ ${out} != *"Hello, World!"* ]]; then
 		cleanup
 		failed "failed to execute 'hello_world' binary test"
+		return 1
 	fi
 
 	echo ${out}

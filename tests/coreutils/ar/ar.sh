@@ -34,6 +34,7 @@ function do_test() {
 	if ! cmp -s out out_ref; then
 		cleanup
 		failed "extracted objects do not match reference!"
+		return 1
 	fi
 
 	cleanup

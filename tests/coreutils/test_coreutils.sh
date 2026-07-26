@@ -85,6 +85,7 @@ for folder in *; do
 	if [[ ${TEST_AIX72} = "y" ]]; then
 		BINS="${BINS72}"
 		BIN="${BINS}/${folder}"
+		VER="72"
 
 		printf "=> AIX 7.2 tests enabled, executing test...\n"
 		export AIX_USER_LIB_PATH="${LIBS72}"
@@ -104,6 +105,7 @@ for folder in *; do
 	if [[ ${TEST_AIX73} = "y" ]]; then
 		BINS="${BINS73}"
 		BIN="${BINS}/${folder}"
+		VER="73"
 
 		printf "\n=> AIX 7.3 tests enabled, executing test...\n"
 		export AIX_USER_LIB_PATH="${LIBS73}"

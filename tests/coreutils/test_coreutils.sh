@@ -15,6 +15,20 @@
 # the tools I know it runs with the flags I've tested, i.e., avoid
 # regressions =)
 #
+# Note 3: Yes, I know, for the most part, GNU coreutils is a superset
+# of the 'original' "coreutils", so mostly all commands are available
+# with minor cosmetic differences. Someone then might say that my
+# VM is useless, then I bring to them:
+#
+# - ar:   uses big-ar archive, not the same archive found for the ar on Linux
+# - bind: AIX's linker, this is not the same as GNU ld.
+# - as:   AIX's assembler, this is not the same as the GNU as.
+# - dump: similar in spirit to 'readelf', but exclusive to AIX and only
+#         works for XCOFF32/64 files; very useful to have in hand.
+# - restore/restbyname: Extracts files from archives that are created with
+#                       the backup command, again, AIX stuff.
+# <others>
+#
 
 # Paths
 CURDIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"

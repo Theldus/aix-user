@@ -4,6 +4,7 @@
  * Made by Theldus, 2025-2026
  */
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -177,6 +178,11 @@ int main(int argc, char **argv, char **envp)
 			errx(1, "Unable to start GDB server!\n");
 	}
 
+	/* Reset SIGPIPE to SIG_DFL (GitHub Actions ignore SIGPIPE by
+	 * default). */
+	signal(SIGPIPE, SIG_DFL);
+
+	/* Start emulation. */
 	entry_point = xcoff_get_entrypoint(&lcoff->xcoff);
 	err = uc_emu_start(uc, entry_point, (1ULL<<48), 0, 0);
 	if (err) {

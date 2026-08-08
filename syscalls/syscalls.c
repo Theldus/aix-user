@@ -151,6 +151,8 @@ static struct sys_table_entry sys_table[] = {
 	{"kfork",          aix_kfork},
 	{"kwaitpid",       aix_kwaitpid},
 	{"kwaitpid64",     aix_kwaitpid64},
+	{"rename",         aix_rename},
+	{"renameat",       aix_renameat},
 };
 
 KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);

@@ -222,6 +222,8 @@ edge cases too.
 | 454            | kioctl             | Partial               |
 | 464            | mntctl             | Stub                  |
 | 472            | kopen              | Partial/Good enough   |
+| 476            | rename             | Implemented           |
+| 477            | renameat           | Implemented           |
 | 480            | fstatx             | Partial               |
 | 489            | umask              | Implemented           |
 | 493            | unamex             | Implemented           |

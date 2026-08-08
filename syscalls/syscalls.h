@@ -118,5 +118,7 @@ extern int aix_pipe(uc_engine *uc);
 extern int aix_kfork(uc_engine *uc);
 extern int aix_kwaitpid(uc_engine *uc);
 extern int aix_kwaitpid64(uc_engine *uc);
+extern int aix_rename(uc_engine *uc);
+extern int aix_renameat(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

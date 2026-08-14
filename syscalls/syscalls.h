@@ -120,5 +120,9 @@ extern int aix_kwaitpid(uc_engine *uc);
 extern int aix_kwaitpid64(uc_engine *uc);
 extern int aix_rename(uc_engine *uc);
 extern int aix_renameat(uc_engine *uc);
+extern int aix_statfs(uc_engine *uc);
+extern int aix_statfs64(uc_engine *uc);
+extern int aix_fstatfs(uc_engine *uc);
+extern int aix_fstatfs64(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

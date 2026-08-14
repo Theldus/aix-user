@@ -58,6 +58,7 @@ OBJS += syscalls/pipe.o
 OBJS += syscalls/kfork.o
 OBJS += syscalls/kwaitpid.o
 OBJS += syscalls/rename.o
+OBJS += syscalls/fstatfs.o
 
 # Pretty print
 Q := @

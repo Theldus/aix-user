@@ -153,6 +153,10 @@ static struct sys_table_entry sys_table[] = {
 	{"kwaitpid64",     aix_kwaitpid64},
 	{"rename",         aix_rename},
 	{"renameat",       aix_renameat},
+	{"statfs",         aix_statfs},
+	{"statfs64",       aix_statfs64},
+	{"fstatfs",        aix_fstatfs},
+	{"fstatfs64",      aix_fstatfs64},
 };
 
 KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);

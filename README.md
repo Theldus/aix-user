@@ -247,6 +247,10 @@ edge cases too.
 | 688            | vmgetinfo          | Partial               |
 | 825            | access             | Implemented           |
 | 827            | kfcntl             | Partial               |
+| 829            | fstatfs64          | Good enough           |
+| 830            | statfs64           | Good enough           |
+| 831            | fstatfs            | Good enough           |
+| 832            | statfs             | Good enough           |
 | 837            | __loadx            | Partial               |
 | 848            | accessx            | Partial/Good enough   |
 

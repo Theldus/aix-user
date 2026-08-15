@@ -58,11 +58,10 @@ $ ./aix-user -L /path/to/aix/libs <aix_binary> [arguments...]
 ### Examples
 Running a simple test binary that prints arguments and environment variables:
 ```bash
-$ file examples/args_env/args_env
-examples/args_env/args_env: executable (RISC System/6000 V3.1) or obj module 
-not stripped
+$ file tests/syscalls/args_env/args_env
+tests/syscalls/args_env: executable (RISC System/6000 V3.1) or obj module not stripped
 
-$ ./aix-user examples/args_env/args_env a b c d
+$ ./aix-user tests/syscalls/args_env/args_env a b c d
 argv[0] = (args_env)
 argv[1] = (a)
 argv[2] = (b)
@@ -147,9 +146,9 @@ Options:
   -L <path>  Override library search path
 
 Examples:
-  ./tools/aix-ldd examples/args_env/args_env
+  ./tools/aix-ldd tests/syscalls/args_env/args_env
   ./tools/aix-ldd /usr/lib/libc.a shr.o
-  ./tools/aix-ldd -L /custom/libs examples/args_env/args_env
+  ./tools/aix-ldd -L /custom/libs tests/syscalls/args_env/args_env
 ```
 
 ## Current Status
@@ -160,10 +159,10 @@ Since the scope is huge and AIX has hundreds of undocumented syscalls (and
 other features), the approach is 'binary-based': when the support for a new 
 binary is wanted, new features are brought in to support that specific binary.
 
-**Currently tested binaries (AIX 7.2):** All binaries under [examples/], plus:
-`ar`, `cal`, `cat`, `chmod`, `cut`, `date`, `dump`, `echo`, `grep`, `head`,
-`kill`, `od`, `printf`, `pwd`, `rm`, `sed`, `sleep`, `tail`, `tee`, `test`,
-`tr`, `uname`, `uniq`, `wc`, `yes`.
+**Currently tested binaries (AIX 7.2+7.3):** All binaries under [tests/syscalls],
+plus: `ar`, `cal`, `cat`, `chmod`, `chown`, `cp`, `cut`, `date`, `dump`, `echo`,
+`env`, `expr`, `grep`, `head`, `kill`, `mv`, `od`, `printf`, `pwd`, `rm`, `sed`,
+`sleep`, `tail`, `tee`, `test`, `tr`, `uname`, `uniq`, `wc`, `yes`.
 
 **Binaries that works, but with possible caveats**: The list below contains
 binaries that works but might have some hidden issues due to features
@@ -177,7 +176,7 @@ not-implemented, and etc:
 | find              | `_sigaction`, `execve` and `kfork` not-implemented yet         |
 | sort              | `_sigaction` not-implemented yet                               |
 
-[examples/]: examples/
+[tests/syscalls/]: tests/syscalls/
 
 **Note:** These lists is (as one might expect) non-exhaustive and certainly
 other tools might or not work as expected. It is also worth noting that

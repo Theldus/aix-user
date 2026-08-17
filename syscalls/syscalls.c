@@ -157,6 +157,8 @@ static struct sys_table_entry sys_table[] = {
 	{"statfs64",       aix_statfs64},
 	{"fstatfs",        aix_fstatfs},
 	{"fstatfs64",      aix_fstatfs64},
+	{"mkdir",          aix_mkdir},
+	{"mkdirat",        aix_mkdirat},
 };
 
 KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);

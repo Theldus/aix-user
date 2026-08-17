@@ -219,6 +219,8 @@ edge cases too.
 | 450            | ftruncate          | Implemented           |
 | 451            | getdirent64        | Implemented           |
 | 454            | kioctl             | Partial               |
+| 460            | mkdir              | Implemented           |
+| 461            | mkdirat            | Implemented           |
 | 464            | mntctl             | Stub                  |
 | 472            | kopen              | Partial/Good enough   |
 | 476            | rename             | Implemented           |

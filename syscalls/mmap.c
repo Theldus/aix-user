@@ -260,9 +260,6 @@ mmap_file(u32 vm_addr, u32 lin_flgs, u32 npages, u32 prot, s32 fd, s64 off)
 	size    = npages * PAGE_SIZE;
 	vm_base = MMAP_FILE_ADDR + (spage * PAGE_SIZE);
 
-	/* If found, set them as used. */
-	memset(mmap_file_map+spage, PAGE_USED, npages);
-
 	/* Find a vague slot to map a file. */
 	for (slot = 0; slot < MAX_MMAP_FILES; slot++)
 		if (mmap_files[slot].status == PAGE_FREE)
@@ -278,6 +275,9 @@ mmap_file(u32 vm_addr, u32 lin_flgs, u32 npages, u32 prot, s32 fd, s64 off)
 		unix_set_errno(AIX_ENOMEM);
 		return -1;
 	}
+
+	/* If found, set them as used. */
+	memset(mmap_file_map+spage, PAGE_USED, npages);
 
 	mm_alloc_region(
 		vm_base,

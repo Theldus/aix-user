@@ -48,6 +48,10 @@ int aix_pipe(uc_engine *uc)
 	ret = pipe(h_pipe);
 	if (ret < 0)
 		unix_set_conv_errno(errno);
+	else {
+		h_pipe[0] = tobe32(h_pipe[0]);
+		h_pipe[1] = tobe32(h_pipe[1]);
+	}
 out:
 	TRACE("pipe", "%x", a_pipe);
 	return ret;

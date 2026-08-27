@@ -284,7 +284,7 @@ mmap_file(u32 vm_addr, u32 lin_flgs, u32 npages, u32 prot, s32 fd, s64 off)
 		size,
 		mmap_files[slot].host_base,
 		UC_PROT_READ|UC_PROT_WRITE,
-		"file");
+		"file/shmem");
 
 	mmap_files[slot].fd      = fd;
 	mmap_files[slot].prot    = prot;
@@ -331,8 +331,19 @@ int aix_do_mmap(uc_engine *uc, u32 addr, u32 len, u32 prot, u32 flgs,
 	pages = ALIGN_UP(len) >> PAGE_SHIFT;
 
 	/* Non-file backed. */
-	if (flgs & AIX_MAP_ANONYMOUS)
-		ret = mmap_anon(addr, lin_flgs, pages, prot);
+	if (flgs & AIX_MAP_ANONYMOUS) {
+		/* Shared anonymous mapping requires the *host* memory to be shared
+		 * too, which we currently do not do, as we keep it as a single
+		 * giant block. However, we can reuse the file-mapping, since
+		 * the file mapping makes a new mmap(2) call (on host/Linux) for
+		 * each new mmap(2) AIX call, and this allows us to make shared
+		 * memory this way, hacky ?
+		 */
+		if (flgs & AIX_MAP_SHARED)
+			ret = mmap_file(addr, lin_flgs, pages, prot, -1, 0);
+		else
+			ret = mmap_anon(addr, lin_flgs, pages, prot);
+	}
 
 	/* File mapping. */
 	else if (fd >= 0)

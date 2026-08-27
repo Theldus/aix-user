@@ -34,13 +34,13 @@
 
 [TEST #5] MAP_SHARED anonymous 4KiB
   addr=0  len=4096  prot=0x3  flags=0x11  fd=-1  off=0
-  -> Allocated at 80002000
+  -> Allocated at c0000000
   -> Zero-fill check: [PASS] (4096 bytes)
   -> Write-back check: [PASS] (4096 bytes)
   -> Allocate result: [PASS]
 
 [TEST #6] munmap (free MAP_SHARED anon)
-  addr=80002000  len=4096
+  addr=c0000000  len=4096
   -> Munmap result: [PASS]
 
 [TEST #7] MAP_FIXED at ptr5

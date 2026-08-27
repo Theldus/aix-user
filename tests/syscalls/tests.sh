@@ -40,7 +40,7 @@ function do_test() {
 
 	if ! cmp -s out out_ref; then
 		echo "[${name}] produced wrong output, see diff:"
-		diff -u out out_ref
+		diff -u out_ref out
 		any_error=1
 	fi
 	popd &>/dev/null

@@ -60,6 +60,7 @@ OBJS += syscalls/kwaitpid.o
 OBJS += syscalls/rename.o
 OBJS += syscalls/fstatfs.o
 OBJS += syscalls/mkdir.o
+OBJS += syscalls/utimes.o
 
 # Pretty print
 Q := @

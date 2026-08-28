@@ -161,6 +161,7 @@ static struct sys_table_entry sys_table[] = {
 	{"mkdirat",        aix_mkdirat},
 	{"shmget",         aix_shmget},
 	{"shmctl",         aix_shmctl},
+	{"utimes",         aix_utimes},
 };
 
 KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);

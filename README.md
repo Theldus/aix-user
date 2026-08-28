@@ -232,6 +232,7 @@ edge cases too.
 | 495            | rmdir              | Implemented           |
 | 497            | unlink             | Implemented           |
 | 481            | statx              | Partial               |
+| 501            | utimes             | Implemented           |
 | 513            | shmctl             | Partial               |
 | 514            | shmdt              | Partial               |
 | 515            | shmat              | Partial               |

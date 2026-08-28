@@ -128,5 +128,6 @@ extern int aix_mkdir(uc_engine *uc);
 extern int aix_mkdirat(uc_engine *uc);
 extern int aix_shmget(uc_engine *uc);
 extern int aix_shmctl(uc_engine *uc);
+extern int aix_utimes(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

@@ -174,6 +174,7 @@ not-implemented, and etc:
 | awk               | `_sigaction`,`__ksetjmp`, and `sigprocmask` not-implemented yet|
 | /usr/ccs/bin/bind | `_sigaction` not-implemented yet                               |
 | find              | `_sigaction`, `execve` and `kfork` not-implemented yet         |
+| restbyname        | `_sigaction` not-implemented yet                               |
 | sort              | `_sigaction` not-implemented yet                               |
 
 [tests/syscalls/]: tests/syscalls/
@@ -257,6 +258,9 @@ edge cases too.
 | 832            | statfs             | Good enough           |
 | 837            | __loadx            | Partial               |
 | 848            | accessx            | Partial/Good enough   |
+| 860            | __chxacl           | Stub                  |
+| 868            | fchpriv            | Stub                  |
+| 869            | chpriv             | Stub                  |
 
 **Note:** The syscall number is for informational purposes only,
 since `aix-user` does not use it to handle them.

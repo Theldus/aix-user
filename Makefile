@@ -61,6 +61,8 @@ OBJS += syscalls/rename.o
 OBJS += syscalls/fstatfs.o
 OBJS += syscalls/mkdir.o
 OBJS += syscalls/utimes.o
+OBJS += syscalls/__chxacl.o
+OBJS += syscalls/chpriv.o
 
 # Pretty print
 Q := @

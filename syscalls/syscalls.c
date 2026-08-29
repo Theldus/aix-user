@@ -162,6 +162,9 @@ static struct sys_table_entry sys_table[] = {
 	{"shmget",         aix_shmget},
 	{"shmctl",         aix_shmctl},
 	{"utimes",         aix_utimes},
+	{"__chxacl",       aix___chxacl},
+	{"chpriv",         aix_chpriv},
+	{"fchpriv",        aix_fchpriv},
 };
 
 KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);

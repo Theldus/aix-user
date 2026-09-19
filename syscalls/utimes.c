@@ -5,11 +5,13 @@
  */
 
 #include <utime.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
 #include "aix_time.h"
+#include "vfs.h"
 
 /**
  * @brief utimes syscall handler.
@@ -28,6 +30,7 @@ int aix_utimes(uc_engine *uc)
 {
 	struct timeval      l_times[2];
 	struct aix_timeval *a_times;
+	char vfs_path[PATH_MAX+1];
 	const char *hpath;
 	u32 atimes;
 	u32 apath;
@@ -57,12 +60,15 @@ int aix_utimes(uc_engine *uc)
 		goto out;
 	}
 
+	if (vfs_resolve(hpath, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
 	/* Actual utimes. */
 	l_times[0].tv_sec  = (long)frombe32(a_times[0].tv_sec);
 	l_times[0].tv_usec = (long)frombe32(a_times[0].tv_usec);
 	l_times[1].tv_sec  = (long)frombe32(a_times[1].tv_sec);
 	l_times[1].tv_usec = (long)frombe32(a_times[1].tv_usec);
-	ret = utimes(hpath, l_times);
+	ret = utimes(vfs_path, l_times);
 	if (ret < 0)
 		unix_set_conv_errno(errno);
 

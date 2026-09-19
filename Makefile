@@ -13,7 +13,7 @@ CFLAGS += -I$(CURDIR)/.deps-unicorn/include -O3 -Wall -Wno-unused-variable
 LDLIBS +=   $(CURDIR)/.deps-unicorn/lib/libunicorn.a
 
 OBJS  = aix-user.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
-OBJS += util.o milicodes/milicode.o insn_emu.o
+OBJS += util.o milicodes/milicode.o insn_emu.o vfs.o
 
 # Syscalls
 OBJS += syscalls/syscalls.o syscalls/errno.o

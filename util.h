@@ -13,6 +13,7 @@
 
 struct args {
 	const char *lib_path;     /* -L: library search path  */
+	const char *sysroot;      /* -r: sysroot path, default: '/' */
 	int trace_syscall;        /* -s: enable syscall trace */
 	int trace_loader;         /* -l: enable loader/binder trace */
 	int trace_memory;         /* -m: enable memory subsys trace */

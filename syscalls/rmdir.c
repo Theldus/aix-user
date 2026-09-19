@@ -5,10 +5,12 @@
  */
 
 #include <unistd.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief rmdir syscall handler.
@@ -26,6 +28,7 @@ int aix_rmdir(uc_engine *uc)
 {
 	int ret      = -1;
 	char *h_path = NULL;
+	char vfs_path[PATH_MAX+1];
 	u32 path     = read_1st_arg();
 
 	if (!(h_path = mm_vm2host(path))) {
@@ -33,7 +36,10 @@ int aix_rmdir(uc_engine *uc)
 		goto out;
 	}
 
-	ret = rmdir(h_path);
+	if (vfs_resolve(h_path, VFS_NOFOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = rmdir(vfs_path);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

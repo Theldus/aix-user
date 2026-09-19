@@ -5,10 +5,12 @@
  */
 
 #include <unistd.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief chdir syscall handler.
@@ -24,6 +26,7 @@
  */
 int aix_chdir(uc_engine *uc)
 {
+	char vfs_path[PATH_MAX+1];
 	char *h_path = NULL;
 	int ret      = -1;
 	u32 path     = read_1st_arg();
@@ -39,7 +42,10 @@ int aix_chdir(uc_engine *uc)
 		goto out;
 	}
 
-	ret = chdir(h_path);
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = chdir(vfs_path);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

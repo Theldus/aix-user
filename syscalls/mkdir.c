@@ -5,10 +5,12 @@
  */
 
 #include <sys/stat.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief mkdir syscall handler.
@@ -26,6 +28,7 @@ int aix_mkdir(uc_engine *uc)
 {
 	int ret;
 	char *opath = NULL;
+	char vfs_path[PATH_MAX+1];
 	u32 path = read_1st_arg();
 	u32 mode = read_2nd_arg();
 
@@ -35,7 +38,10 @@ int aix_mkdir(uc_engine *uc)
 		goto out;
 	}
 
-	ret = mkdir(opath, mode);
+	if (vfs_resolve(opath, VFS_NOFOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = mkdir(vfs_path, mode);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;
@@ -63,6 +69,7 @@ int aix_mkdirat(uc_engine *uc)
 {
 	int ret;
 	char *opath = NULL;
+	char vfs_path[PATH_MAX+1];
 	u32 dirfd = read_1st_arg();
 	u32 path  = read_2nd_arg();
 	u32 mode  = read_3rd_arg();
@@ -73,7 +80,10 @@ int aix_mkdirat(uc_engine *uc)
 		goto out;
 	}
 
-	ret = mkdirat(dirfd, opath, mode);
+	if (vfs_resolve(opath, VFS_NOFOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = mkdirat(dirfd, vfs_path, mode);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

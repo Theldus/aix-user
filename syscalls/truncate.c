@@ -5,11 +5,13 @@
  */
 
 #include <unistd.h>
+#include <limits.h>
 
 #include "aix_errno.h"
 #include "mm.h"
 #include "unix.h"
 #include "syscalls.h"
+#include "vfs.h"
 
 /**
  * @brief truncate syscall handler.
@@ -28,6 +30,7 @@ int aix_truncate(uc_engine *uc)
 {
 	int ret;
 	const char *h_path;
+	char vfs_path[PATH_MAX+1];
 	u32 vm_path   = read_1st_arg();
 	u32 vm_length = read_2nd_arg();
 
@@ -39,8 +42,11 @@ int aix_truncate(uc_engine *uc)
 		goto out;
 	}
 
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
 	/* Actual truncate. */
-	ret = truncate(h_path, vm_length);
+	ret = truncate(vfs_path, vm_length);
 	if (ret < 0)
 		unix_set_conv_errno(errno);
 
@@ -66,6 +72,7 @@ int aix_ktruncate(uc_engine *uc)
 {
 	int ret;
 	const char *h_path;
+	char vfs_path[PATH_MAX+1];
 	u32 vm_path   = read_1st_arg();
 	u64 vm_length = (((u64)read_2nd_arg()) << 32) | read_3rd_arg();
 
@@ -77,8 +84,11 @@ int aix_ktruncate(uc_engine *uc)
 		goto out;
 	}
 
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
 	/* Actual truncate. */
-	ret = truncate(h_path, vm_length);
+	ret = truncate(vfs_path, vm_length);
 	if (ret < 0)
 		unix_set_conv_errno(errno);
 

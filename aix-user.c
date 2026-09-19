@@ -16,10 +16,12 @@
 #include "mm.h"
 #include "unix.h"
 #include "insn_emu.h"
+#include "vfs.h"
 
 /* Command-line arguments. */
 struct args args = {
 	.lib_path      = ".",
+	.sysroot  = "/",
 	.trace_syscall = 0,
 	.trace_loader  = 0,
 	.trace_memory  = 0,
@@ -45,6 +47,8 @@ static void usage(const char *prgname)
 		"Options:\n"
 		"  -L <path> Set library search path (default: current directory)\n"
 		"            Env var: AIX_USER_LIB_PATH\n\n"
+		"  -r <path> Set the sysroot path for the VM (default: /)\n"
+		"            Env var: AIX_USER_SYSROOT_PATH\n\n"
 		"  -s        Enable syscall trace\n"
 		"            Env var: AIX_USER_SYS_TRACE\n\n"
 		"  -l        Enable loader/binder/milicode/syscall trace\n"
@@ -70,12 +74,39 @@ static void parse_env_args(void)
 	const char *env;
 	if ((env = getenv("AIX_USER_LIB_PATH")) && strcmp("", env))
 		args.lib_path = env;
+	if ((env = getenv("AIX_USER_SYSROOT_PATH")) && strcmp("", env))
+		args.sysroot = realpath(env, NULL);
 	if ((env = getenv("AIX_USER_SYS_TRACE")) && strcmp("", env))
 		args.trace_syscall = 1;
 	if ((env = getenv("AIX_USER_LOADER_TRACE")) && strcmp("", env))
 		args.trace_loader = 1;
 	if ((env = getenv("AIX_USER_TRACE_MEM")) && strcmp("", env))
 		args.trace_memory = 1;
+}
+
+/**
+ * @brief Check if the current work dir makes sense for the
+ * provided sysroot path: the cwd should always be inside
+ * the sysroot.
+ *
+ * @return Returns 1 if success, 0 otherwise.
+ */
+static int validate_cwd(void)
+{
+	char cwd[PATH_MAX+1] = {0};
+	if (!args.sysroot) {
+		fprintf(stderr, "Error: provided path for sysroot is invalid!\n");
+		return 0;
+	}
+	if (!getcwd(cwd, sizeof(cwd)-1)) {
+		fprintf(stderr, "Error: unable to get current work dir!\n");
+		return 0;
+	}
+	if (vfs_pathcontains(args.sysroot, cwd) <= 0) {
+		fprintf(stderr, "Error: current work dir is outside sysroot!\n");
+		return 0;
+	}
+	return 1;
 }
 
 /**
@@ -94,7 +125,7 @@ static void parse_args(int *argc, char ***argv)
 	char **orig_argv = *argv;
 
 	/* Parse options. */
-	while ((c = getopt(*argc, *argv, "+hL:slmg:d")) != -1)
+	while ((c = getopt(*argc, *argv, "+hL:r:slmg:d")) != -1)
 	{
 		switch (c) {
 		case 'h':
@@ -102,6 +133,9 @@ static void parse_args(int *argc, char ***argv)
 			break;
 		case 'L':
 			args.lib_path = optarg;
+			break;
+		case 'r':
+			args.sysroot = realpath(optarg, NULL);
 			break;
 		case 's':
 			args.trace_syscall = 1;
@@ -140,6 +174,11 @@ static void parse_args(int *argc, char ***argv)
 	 */
 	*argc -= optind;
 	*argv += optind;
+
+	/* Validate sysroot path against CWD: the current work dir *must*
+	 * be inside the sysroot. */
+	if (!validate_cwd())
+		usage(orig_argv[0]);
 }
 
 /* Main =). */

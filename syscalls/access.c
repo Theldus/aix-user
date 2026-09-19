@@ -6,11 +6,13 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief access syscall handler.
@@ -33,6 +35,7 @@ int aix_access(uc_engine *uc)
 {
 	int ret;
 	char *h_path;
+	char vfs_path[PATH_MAX+1];
 	u32 path = read_1st_arg();
 	u32 mode = read_2nd_arg();
 
@@ -42,7 +45,10 @@ int aix_access(uc_engine *uc)
 		goto out;
 	}
 
-	ret = access(h_path, mode);
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = access(vfs_path, mode);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;
@@ -129,6 +135,7 @@ int aix_accessx(uc_engine *uc)
 {
 	int ret;
 	char *h_path;
+	char vfs_path[PATH_MAX+1];
 	u32 path = read_1st_arg();
 	u32 mode = read_2nd_arg();
 	u32 who  = read_3rd_arg();
@@ -139,10 +146,13 @@ int aix_accessx(uc_engine *uc)
 		goto out;
 	}
 
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
 	switch (who) {
 		/* Trad access checks exactly this. */
 		case ACC_INVOKER:
-			ret = access(h_path, mode);
+			ret = access(vfs_path, mode);
 			if (ret < 0) {
 				unix_set_conv_errno(errno);
 				goto out;
@@ -151,7 +161,7 @@ int aix_accessx(uc_engine *uc)
 
 		/* EUID + GID. */
 		case ACC_SELF:
-			ret = faccessat(AT_FDCWD, h_path, mode, AT_EACCESS);
+			ret = faccessat(AT_FDCWD, vfs_path, mode, AT_EACCESS);
 			if (ret < 0) {
 				unix_set_conv_errno(errno);
 				goto out;
@@ -161,7 +171,7 @@ int aix_accessx(uc_engine *uc)
 		/* Edge cases. */
 		case ACC_OTHERS:
 		case ACC_ALL:
-			ret = acc_stat(mode, who, h_path);
+			ret = acc_stat(mode, who, vfs_path);
 			if (ret < 0) {
 				unix_set_errno(AIX_EACCES);
 				goto out;

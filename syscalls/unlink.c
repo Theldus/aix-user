@@ -5,10 +5,12 @@
  */
 
 #include <unistd.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief unlink syscall handler.
@@ -26,6 +28,7 @@ int aix_unlink(uc_engine *uc)
 {
 	int ret;
 	char *h_path = NULL;
+	char vfs_path[PATH_MAX+1];
 	u32 path     = read_1st_arg();
 
 	ret = -1;
@@ -34,7 +37,10 @@ int aix_unlink(uc_engine *uc)
 		goto out;
 	}
 
-	ret = unlink(h_path);
+	if (vfs_resolve(h_path, VFS_NOFOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = unlink(vfs_path);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

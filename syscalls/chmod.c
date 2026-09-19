@@ -5,10 +5,12 @@
  */
 
 #include <sys/stat.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief chmod syscall handler.
@@ -25,6 +27,7 @@
  */
 int aix_chmod(uc_engine *uc)
 {
+	char vfs_path[PATH_MAX+1];
 	char *h_path = NULL;
 	int ret      = -1;
 	u32 path     = read_1st_arg();
@@ -41,7 +44,10 @@ int aix_chmod(uc_engine *uc)
 		goto out;
 	}
 
-	ret = chmod(h_path, mode);
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
+	ret = chmod(vfs_path, mode);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

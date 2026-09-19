@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include "syscalls.h"
@@ -15,6 +16,7 @@
 #include "aix_errno.h"
 #include "aix_time.h"
 #include "mm.h"
+#include "vfs.h"
 
 static u32 o_errno;
 static struct stat linux_st;
@@ -240,12 +242,14 @@ static int do_stat(uc_engine *uc, int have_fd)
 {
 	char *spath = NULL;
 	char *hbuff = NULL;
+	char vfs_path[PATH_MAX+1];
 	u32 path_fd = read_1st_arg();
 	u32 buff    = read_2nd_arg();
 	u32 length  = read_3rd_arg();
 	u32 cmd     = read_4th_arg();
 	int ret     = -1;
 	void *st;
+	int vfs_mode;
 	size_t exp_len;
 
 	if (!have_fd) {
@@ -253,6 +257,9 @@ static int do_stat(uc_engine *uc, int have_fd)
 			unix_set_errno(AIX_EINVAL);
 			goto out;
 		}
+		vfs_mode = (cmd & STX_LINK) ? VFS_NOFOLLOW : VFS_FOLLOW;
+		if (vfs_resolve(spath, vfs_mode, vfs_path) < 0)
+			goto out;
 	}
 
 	/* Determine which structure type based on command flags */
@@ -282,9 +289,9 @@ static int do_stat(uc_engine *uc, int have_fd)
 	/* Perform stat,lstat or fstat based on STX_LINK and have_fd flags. */
 	if (!have_fd) {
 		if (cmd & STX_LINK)
-			ret = lstat(spath, &linux_st);
+			ret = lstat(vfs_path, &linux_st);
 		else
-			ret = stat(spath, &linux_st);
+			ret = stat(vfs_path, &linux_st);
 	}
 	else
 		ret = fstat(path_fd, &linux_st);

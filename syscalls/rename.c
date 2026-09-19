@@ -5,10 +5,12 @@
  */
 
 #include <stdio.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /**
  * @brief rename syscall handler.
@@ -27,6 +29,8 @@ int aix_rename(uc_engine *uc)
 {
 	char *h_oldp = NULL;
 	char *h_newp = NULL;
+	char vfs_oldpath[PATH_MAX+1];
+	char vfs_newpath[PATH_MAX+1];
 	int ret      = -1;
 	u32 oldp     = read_1st_arg();
 	u32 newp     = read_2nd_arg();
@@ -46,7 +50,13 @@ int aix_rename(uc_engine *uc)
 		goto out;
 	}
 
-	ret = rename(h_oldp, h_newp);
+	/* Convert from sysroot. */
+	if (vfs_resolve(h_oldp, VFS_NOFOLLOW, vfs_oldpath) < 0)
+		goto out;
+	if (vfs_resolve(h_newp, VFS_NOFOLLOW, vfs_newpath) < 0)
+		goto out;
+
+	ret = rename(vfs_oldpath, vfs_newpath);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;
@@ -77,6 +87,8 @@ int aix_renameat(uc_engine *uc)
 {
 	char *h_oldp = NULL;
 	char *h_newp = NULL;
+	char vfs_oldpath[PATH_MAX+1];
+	char vfs_newpath[PATH_MAX+1];
 	int ret      = -1;
 	u32 oldfd    = read_1st_arg();
 	u32 oldp     = read_2nd_arg();
@@ -98,7 +110,13 @@ int aix_renameat(uc_engine *uc)
 		goto out;
 	}
 
-	ret = renameat(oldfd, h_oldp, newfd, h_newp);
+	/* Convert from sysroot. */
+	if (vfs_resolve(h_oldp, VFS_NOFOLLOW, vfs_oldpath) < 0)
+		goto out;
+	if (vfs_resolve(h_newp, VFS_NOFOLLOW, vfs_newpath) < 0)
+		goto out;
+
+	ret = renameat(oldfd, vfs_oldpath, newfd, vfs_newpath);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

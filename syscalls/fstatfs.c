@@ -6,10 +6,12 @@
 
 #include <string.h>
 #include <sys/vfs.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 static struct statfs linux_sfs;
 
@@ -207,6 +209,7 @@ static int do_statfs(uc_engine *uc, const char *h_path, u32 sfs, int is_64bit)
 {
 	int ret;
 	void *ptr;
+	char vfs_path[PATH_MAX+1];
 	struct aix_statfs   *aix_sfs;
 	struct aix_statfs64 *aix_sfs64;
 	ret = -1;
@@ -216,12 +219,15 @@ static int do_statfs(uc_engine *uc, const char *h_path, u32 sfs, int is_64bit)
 		goto out;
 	}
 
+	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+		goto out;
+
 	if (!(ptr = mm_vm2host(sfs))) {
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
 
-	ret = statfs(h_path, &linux_sfs);
+	ret = statfs(vfs_path, &linux_sfs);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

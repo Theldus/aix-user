@@ -9,10 +9,12 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 #include "syscalls.h"
 #include "unix.h"
 #include "aix_errno.h"
 #include "mm.h"
+#include "vfs.h"
 
 /*
  * Note:
@@ -72,7 +74,9 @@
 int aix_kopen(uc_engine *uc)
 {
 	int ret;
+	int vfs_mode;
 	char *opath = NULL;
+	char vfs_path[PATH_MAX+1];
 	u32 path   = read_1st_arg();
 	u32 flags  = read_2nd_arg();
 	u32 mode   = read_3rd_arg();
@@ -83,6 +87,11 @@ int aix_kopen(uc_engine *uc)
 		unix_set_errno(AIX_EFAULT);
 		goto out;
 	}
+
+	vfs_mode = (flags & (AIX_O_CREAT|AIX_O_EXCL)) ?
+		VFS_NOFOLLOW : VFS_FOLLOW;
+	if (vfs_resolve(opath, vfs_mode, vfs_path) < 0)
+		goto out;
 
 	/*
 	 * Create the Linux-equivalent flags from AIX flags.
@@ -107,7 +116,7 @@ int aix_kopen(uc_engine *uc)
 	if (flags & AIX_O_SYNC)      lflags |= O_SYNC;
 	if (flags & AIX_O_TRUNC)     lflags |= O_TRUNC;
 
-	ret = open(opath, lflags, mode);
+	ret = open(vfs_path, lflags, mode);
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;

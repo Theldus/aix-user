@@ -534,6 +534,12 @@ done_verbatim:
 	if (trailing_slash)
 		VFS_ERR(ab_append_chr(&host, '/'), out);
 
+	/* A double slash might ocurr when sysroot is '/' so we just
+	 * advance the pointer to skip the extra slash. */
+	c = host.buff;
+	if (c[0] == '/' && c[1] == '/')
+		c++;
+
 	ret = snprintf(host_out, PATH_MAX, "%s", host.buff);
 	if (ret < 0 || ret >= PATH_MAX) {
 		unix_set_errno(AIX_ENAMETOOLONG);

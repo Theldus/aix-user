@@ -18,6 +18,9 @@
 #include "insn_emu.h"
 #include "vfs.h"
 
+/* Our dear envp. */
+extern char **environ;
+
 /* Command-line arguments. */
 struct args args = {
 	.lib_path      = ".",
@@ -133,18 +136,23 @@ static void parse_args(int *argc, char ***argv)
 			break;
 		case 'L':
 			args.lib_path = optarg;
+			setenv("AIX_USER_LIB_PATH", optarg, 1);
 			break;
 		case 'r':
 			args.sysroot = realpath(optarg, NULL);
+			setenv("AIX_USER_SYSROOT_PATH", args.sysroot, 1);
 			break;
 		case 's':
 			args.trace_syscall = 1;
+			setenv("AIX_USER_SYS_TRACE", "1", 1);
 			break;
 		case 'l':
 			args.trace_loader = 1;
+			setenv("AIX_USER_LOADER_TRACE", "1", 1);
 			break;
 		case 'm':
 			args.trace_memory = 1;
+			setenv("AIX_USER_TRACE_MEM", "1", 1);
 			break;
 		case 'g':
 			args.gdb_port = atoi(optarg);
@@ -182,7 +190,7 @@ static void parse_args(int *argc, char ***argv)
 }
 
 /* Main =). */
-int main(int argc, char **argv, char **envp)
+int main(int argc, char **argv)
 {
 	const char *program;
 	u32 entry_point;
@@ -200,7 +208,7 @@ int main(int argc, char **argv, char **envp)
 		errx(1, "Unable to create VM: %s\n", uc_strerror(err));
 
 	mm_init(uc);
-	mm_init_stack(argc, (const char **)argv, (const char **)envp);
+	mm_init_stack(argc, (const char **)argv, (const char **)environ);
 	unix_init(uc);
 	insn_emu_init(uc);
 

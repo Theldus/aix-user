@@ -132,5 +132,6 @@ extern int aix_utimes(uc_engine *uc);
 extern int aix___chxacl(uc_engine *uc);
 extern int aix_chpriv(uc_engine *uc);
 extern int aix_fchpriv(uc_engine *uc);
+extern int aix_execve(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

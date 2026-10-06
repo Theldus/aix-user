@@ -12,5 +12,8 @@
 
 extern int vfs_pathcontains(const char *haystack, const char *needle);
 extern int vfs_resolve(const char *guest_path, int flags, char *host_out);
+extern int vfs_resolve_relativeto(const char *guest_path,
+	const char *sysroot, int flags, char *host_out);
+char *vfs_host2guest(const char *sysroot, char *path);
 
 #endif

@@ -198,18 +198,19 @@ static int is_special_path(struct str_ab *path) {
  * @brief For a provided guest @p path, converts into the equivalent
  * host path, taking into account the current set sysroot.
  *
- * @param path Guest path.
+ * @param path    Guest path.
+ * @param sysroot Host configured sysroot.
  *
  * @return Returns the host-converted path if success, NULL otherwise.
  */
-static const char *guest2host(struct str_ab *path) {
+static const char *guest2host(struct str_ab *path, const char *sysroot) {
 	static char buff[PATH_MAX] = {0};
 	int ret;
-	if (ab_len(path) + strlen(args.sysroot) + 1 >= sizeof buff) {
+	if (ab_len(path) + strlen(sysroot) + 1 >= sizeof buff) {
 		unix_set_errno(AIX_ENAMETOOLONG);
 		return NULL;
 	}
-	ret = snprintf(buff, sizeof buff, "%s%s", args.sysroot, path->buff);
+	ret = snprintf(buff, sizeof buff, "%s%s", sysroot, path->buff);
 	if (ret < 0 || ret >= PATH_MAX) {
 		unix_set_errno(AIX_ENAMETOOLONG);
 		return NULL;
@@ -218,29 +219,57 @@ static const char *guest2host(struct str_ab *path) {
 }
 
 /**
+ * @brief For a given provided (complete) pair of @p sysroot and @p path,
+ * convert the host path into the guest path.
+ *
+ * @param sysroot Guest VM sysroot configured path.
+ * @param path    Host path to be converted.
+ *
+ * @return Returns the converted path or NULL if the host path do not
+ * belongs to sysroot.
+ */
+char *vfs_host2guest(const char *sysroot, char *path) {
+	char *p;
+	size_t len_path, len_sys;
+	if (!path || !sysroot)
+		return NULL;
+
+	/* Path is already inside sysroot and do not need any conversion. */
+	if (*sysroot == '/' && sysroot[1] == '\0')
+		return path;
+
+	/* Path outside sysroot. */
+	if (vfs_pathcontains(sysroot, path) <= 0)
+		return NULL;
+
+	len_path = strlen(path);
+	len_sys  = strlen(sysroot);
+	p = path + len_sys;
+	memmove(path, p, len_path - len_sys + 1);
+	return path;
+}
+
+/**
  * @brief Returns the current guest CWD, using the configured sysroot
  * path as the basis.
  *
  * @param out_cwd Output buffer for CWD (at least PATH_MAX bytes)
  * @param size    Output buffer size.
+ * @param sysroot Host configured sysroot.
  *
  * @return Returns the same 'out_cwd' buffer is success, NULL
  * otherwise.
  */
-static const char *guest_cwd(char *out_cwd, size_t size) {
+static const char *guest_cwd(char *out_cwd, size_t size, const char *sysroot) {
 	char *p;
 	size_t len_cwd, len_sys;
 	if (!out_cwd || !size)
 		return NULL;
 	if (!getcwd(out_cwd, size))
 		return NULL;
-	if (vfs_pathcontains(args.sysroot, out_cwd) <= 0)
+	if (vfs_pathcontains(sysroot, out_cwd) <= 0)
 		return NULL;
-	len_cwd = strlen(out_cwd);
-	len_sys = strlen(args.sysroot);
-	p = out_cwd + len_sys;
-	memmove(out_cwd, p, len_cwd - len_sys + 1);
-	return out_cwd;
+	return vfs_host2guest(sysroot, out_cwd);
 }
 
 /**
@@ -364,12 +393,14 @@ int vfs_pathcontains(const char *haystack, const char *needle)
  * component, or ignoring it.
  *
  * @param guest_path VM's AIX path to be converted to host path.
+ * @param sysroot    Sysroot where the path will be calculated against.
  * @param flags      Whether VFS_FOLLOW or VFS_NOFOLLOW
  * @param host_out   Output buffer, at least PATH_MAX bytes (required!).
  *
  * @return Returns 0 if success, -1 otherwise (invalid path).
  */
-int vfs_resolve(const char *guest_path, int flags, char *host_out)
+int vfs_resolve_relativeto(const char *guest_path, const char *sysroot,
+	int flags, char *host_out)
 {
 	struct str_ab host, resolved, remaining, symlink, gp;
 	struct str_ab *cur, *nxt, *swp;
@@ -407,7 +438,7 @@ int vfs_resolve(const char *guest_path, int flags, char *host_out)
 
 	/* Relative. */
 	if (*guest_path != '/') {
-		if (!guest_cwd(cwd, sizeof cwd))
+		if (!guest_cwd(cwd, sizeof cwd, sysroot))
 			goto out;
 		VFS_ERR(ab_append_str(&remaining, cwd, 0), out);
 		VFS_ERR(ab_append_fmt(&remaining, "/%s", guest_path), out);
@@ -461,7 +492,7 @@ int vfs_resolve(const char *guest_path, int flags, char *host_out)
 		 * Check the entire path until now, if not found, dump as-is and
 		 * let the Linux handle later.
 		 */
-		hpath = guest2host(&resolved);
+		hpath = guest2host(&resolved, sysroot);
 		VFS_ERR(!hpath, out);
 
 		if (lstat(hpath, &st) < 0) {
@@ -527,7 +558,7 @@ int vfs_resolve(const char *guest_path, int flags, char *host_out)
 	}
 
 	ab_init(&host);
-	VFS_ERR(ab_append_str(&host, guest2host(&resolved), 0), out);
+	VFS_ERR(ab_append_str(&host, guest2host(&resolved, sysroot), 0), out);
 
 done_verbatim:
 	/* Add the trailing slash again, it had one before */
@@ -540,7 +571,7 @@ done_verbatim:
 	if (c[0] == '/' && c[1] == '/')
 		c++;
 
-	ret = snprintf(host_out, PATH_MAX, "%s", host.buff);
+	ret = snprintf(host_out, PATH_MAX, "%s", c);
 	if (ret < 0 || ret >= PATH_MAX) {
 		unix_set_errno(AIX_ENAMETOOLONG);
 		goto out;
@@ -548,4 +579,18 @@ done_verbatim:
 	ret = 0;
 out:
 	return ret;
+}
+
+/**
+ * @brief Resolves a provided path, whether following until the last
+ * component, or ignoring it.
+ *
+ * @param guest_path VM's AIX path to be converted to host path.
+ * @param flags      Whether VFS_FOLLOW or VFS_NOFOLLOW
+ * @param host_out   Output buffer, at least PATH_MAX bytes (required!).
+ *
+ * @return Returns 0 if success, -1 otherwise (invalid path).
+ */
+int vfs_resolve(const char *guest_path, int flags, char *host_out) {
+	return vfs_resolve_relativeto(guest_path, args.sysroot, flags, host_out);
 }

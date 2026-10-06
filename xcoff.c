@@ -636,8 +636,10 @@ int xcoff_load(const char *buff, size_t size, struct xcoff *xcoff)
 		return -1;
 	}
 
-	if (xcoff->hdr.f_magic != XCOFFF32_MAGIC)
+	if (xcoff->hdr.f_magic != XCOFFF32_MAGIC) {
 		warn("Binary file is not an XCOFF32!!!\n");
+		return -1;
+	}
 
 	if (xcoff_read_hdrs(xcoff) < 0)
 		return -1;

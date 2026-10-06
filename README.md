@@ -173,7 +173,7 @@ not-implemented, and etc:
 | as                | `_sigaction` not-implemented yet                               |
 | awk               | `_sigaction`,`__ksetjmp`, and `sigprocmask` not-implemented yet|
 | /usr/ccs/bin/bind | `_sigaction` not-implemented yet                               |
-| find              | `_sigaction`, `execve` and `kfork` not-implemented yet         |
+| find              | `_sigaction` not-implemented yet                               |
 | restbyname        | `_sigaction` not-implemented yet                               |
 | sort              | `_sigaction` not-implemented yet                               |
 
@@ -197,6 +197,7 @@ edge cases too.
 | 18             | _nsleep            | Implemented           |
 | 28             | kwaitpid           | Partial/Good enough   |
 | 75             | kfork              | Implemented           |
+| 77             | execve             | Implemented           |
 | 107            | kill               | Implemented           |
 | 112            | getuidx            | Implemented           |
 | 113            | getgidx            | Implemented           |

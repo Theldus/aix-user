@@ -12,12 +12,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "mm.h"
 #include "util.h"
 #include "loader.h"
 #include "unix.h"
 #include "aix_mmap.h"
+#include "vfs.h"
 
 /**
  * Debug logging macro for the memory subsystem.
@@ -680,6 +682,75 @@ static u32 mm_strcpy(u32 dst, const char *src)
 }
 
 /**
+ * @brief Prepare the environment variables before adding them into
+ * the userspace memory: the paths need to be fixed so they become
+ * 'sysroot'-aware and calls to execve can work as expected for
+ * binaries inside the sysroot too.
+ *
+ * @note The envp pointer is not passed here for a simple reason: setenv
+ * already changes it, and since we're not unsetting anything, their
+ * positions must be kept the same.
+ */
+static void prepare_env_paths(void)
+{
+	char vfs[1025] = {0};
+	char *newpath  = NULL;
+	char *path     = getenv("PATH");
+	char *save     = NULL;
+	char *tok;
+	char *tmp;
+	char *p1;
+	int  len;
+
+	if (!path)
+		errx(1, "Unable to find the PATH env var!\n");
+	if (!(newpath = malloc(strlen(path))))
+		errx(1, "Unable to allocate newpath!\n");
+	if (!(p1 = strdup(path)))
+		errx(1, "Unable to duplicate path!\n");
+
+	tmp = newpath;
+	for (tok = strtok_r(p1, ":", &save);
+	     tok;
+	     tok = strtok_r(NULL, ":", &save))
+	{
+		path = tok;
+		/*
+		 * Check if path is relative or absolute,
+		 * and then check against the current set sysroot:
+		 * If absolute and inside sysroot, we patch the path
+		 * so it becomes relative to sysroot. Otherwise, we
+		 * keep the path as is.
+		 */
+		if (*tok == '/') {
+			if (vfs_resolve_relativeto(tok, "/", VFS_NOFOLLOW, vfs) < 0)
+				errx(1, "Unable to resolve path (%s)\n", tok);
+			/*
+			 * Attempt to convert from host to sysroot:
+			 * - If failed: host path is outside sysroot, we add it verbatim
+			 * - If success: add converted path into the new PATH
+			 */
+			path = vfs;
+			vfs_host2guest(args.sysroot, vfs);
+		}
+
+		len = strlen(path);
+		memcpy(tmp, path, len);
+		tmp[len] = ':';
+		tmp += len + 1;
+	}
+	*tmp = '\0';
+
+	/* Change PATH to its new calculated value. */
+	if (setenv("PATH", newpath, 1))
+		errx(1, "Unable to change PATH, reason: (%s)\n", strerror(errno));
+
+	/* Clear PWD and OLDPWD. */
+	if (getenv("PWD"))    setenv("PWD",    "", 1);
+	if (getenv("OLDPWD")) setenv("OLDPWD", "", 1);
+}
+
+/**
  * @brief Initialize the stack with the proper expected layout for argc,
  * argv and envp variables.
  *
@@ -697,6 +768,8 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	u32 stack;
 	u32 val;
 	int i;
+
+	prepare_env_paths();
 
 	bytes     = 0;
 	env_count = 0;

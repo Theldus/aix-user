@@ -63,6 +63,7 @@ OBJS += syscalls/mkdir.o
 OBJS += syscalls/utimes.o
 OBJS += syscalls/__chxacl.o
 OBJS += syscalls/chpriv.o
+OBJS += syscalls/execve.o
 
 # Pretty print
 Q := @

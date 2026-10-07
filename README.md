@@ -174,6 +174,7 @@ not-implemented, and etc:
 | awk               | `_sigaction`,`__ksetjmp`, and `sigprocmask` not-implemented yet|
 | /usr/ccs/bin/bind | `_sigaction` not-implemented yet                               |
 | find              | `_sigaction` not-implemented yet                               |
+| ld                | `_sigaction` not-implemented yet                               |
 | restbyname        | `_sigaction` not-implemented yet                               |
 | sort              | `_sigaction` not-implemented yet                               |
 

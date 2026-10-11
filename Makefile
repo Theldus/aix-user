@@ -65,6 +65,7 @@ OBJS += syscalls/__chxacl.o
 OBJS += syscalls/chpriv.o
 OBJS += syscalls/execve.o
 OBJS += syscalls/readlink.o
+OBJS += syscalls/appsetrlimit.o
 
 # Pretty print
 Q := @

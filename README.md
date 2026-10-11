@@ -205,6 +205,8 @@ edge cases too.
 | 149            | _exit              | Implemented           |
 | 150            | kwaitpid64         | Partial/Good enough   |
 | 174            | appgetrlimit       | Implemented           |
+| 175            | appsetrlimit       | Implemented           |
+| 178            | setrlimit64        | Implemented           |
 | 179            | getrlimit64        | Implemented           |
 | 258            | times              | Implemented           |
 | 399            | klseek             | Implemented           |

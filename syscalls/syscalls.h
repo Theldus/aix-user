@@ -134,5 +134,7 @@ extern int aix_chpriv(uc_engine *uc);
 extern int aix_fchpriv(uc_engine *uc);
 extern int aix_execve(uc_engine *uc);
 extern int aix_readlink(uc_engine *uc);
+extern int aix_appsetrlimit(uc_engine *uc);
+extern int aix_setrlimit64(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

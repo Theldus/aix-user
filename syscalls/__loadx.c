@@ -11,6 +11,7 @@
 #include "mm.h"
 #include "loader.h"
 
+#define AIX_DL_MASK       0xFF000000
 #define AIX_DL_EXECQ      0x03000000
 #define AIX_DL_EXITQ      0x04000000
 #define AIX_DL_SRCHMODULE 0x00080000
@@ -64,10 +65,8 @@ static inline int module_has_rtinit(const struct xcoff *xcoff) {
  *
  * AIX calling convention:
  *   r3 = flag
- *   r4 = symbol_name / buffer
- *   r5 = (output) pointer to symbol's module index
- *   r6 = (output) pointer to symbol's data origin
- *   r7 = (input)  extra parameter
+ *   r4 = buffer
+ *   r5 = buffer length (bytes)
  *
  * Return value (in r3):
  *   0 if success, something else(?) otherwise
@@ -80,32 +79,46 @@ int aix___loadx(uc_engine *uc)
 
 	u32 flg     = read_1st_arg();
 	u32 buffer  = read_2nd_arg();
-	u32 sym_idx = read_3rd_arg();
-	u32 sym_org = read_4th_arg();
-	u32 ext     = read_5th_arg();
+	s32 length  = read_3rd_arg();
+	u32 unus1   = read_4th_arg();
+	u32 unus2   = read_5th_arg();
+	s32 rem     = length;
+	int cmd     = flg & AIX_DL_MASK;
 	int ret     = 0;
-	int idx;
+	int cnt     = 0;
+	int idx     = 0;
 
-	if (flg & (AIX_DL_EXECQ|AIX_DL_EXITQ)) {
+	if (cmd == AIX_DL_EXECQ || cmd == AIX_DL_EXITQ) {
 		if (!(dl_info = mm_vm2host(buffer))) {
+			ret = -1;
+			goto out;
+		}
+
+		/* Do not fit even the header??, quit */
+		if (rem < (s32)sizeof(*dl_info)) {
 			ret = -1;
 			goto out;
 		}
 
 		/* Header. */
 		dl_info->h.flags   = tobe32(AIX_DL_INFO_OK);
-		dl_info->h.size    = tobe32(16);
+		dl_info->h.size    = tobe32(sizeof(*dl_info));
 		dl_info->h.len     = 0; /* to be incremented/converted later. */
 		dl_info->h.padding = 0;
 		dlp = dl_info+1;
 		lc  = loaded_modules;
-		idx = 0;
+		rem -= sizeof(*dl_info);
 
-		for (; lc; lc = lc->next) {
+		for (; lc && rem; lc = lc->next, idx++) {
 			if (!module_has_rtinit(&lc->xcoff))
 				continue;
+			if (rem < (s32)sizeof(*dl_info))
+				break;
 
 			r = mm_find_region(lc->text_start);
+			if (!r)
+				break;
+
 			dlp->e.text_start = tobe32(r->vm_base);
 			dlp->e.data_start = tobe32(lc->data_start);
 			dlp->e.data_size  = tobe32(lc->xcoff.aux.o_dsize +
@@ -122,13 +135,14 @@ int aix___loadx(uc_engine *uc)
 				dlp->e.flags = tobe16(AIX_DL_HAS_RTINIT);
 
 			dlp++;
-			idx++;
+			cnt++;
+			rem -= sizeof(*dl_info);
 		}
-		dl_info->h.len = tobe32(idx);
+		dl_info->h.len = tobe32(cnt);
 	}
 
 out:
 	TRACE("__loadx", "0x%x, 0x%x, 0x%x, 0x%x, 0x%x",
-		flg,buffer,sym_idx,sym_org,ext);
+		flg,buffer,length,unus1,unus2);
 	return ret;
 }

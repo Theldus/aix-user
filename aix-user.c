@@ -218,6 +218,7 @@ int main(int argc, char **argv)
 		return -1;
 
 	unix_init_system_config(uc);
+	unix_init_module_count(uc);
 
 	/* Init GDB stub (if requested). */
 	if (args.enable_gdb) {

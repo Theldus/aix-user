@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "loader.h"
 #include "syscalls.h"
 #include "milicode.h"
 #include "mm.h"
@@ -265,6 +266,23 @@ void unix_init_system_config(uc_engine *uc)
 
 	UNIX("_system_configuration/tb configured! (0x%x - 0x%x)\n",
 		UNIX_SYSTEM_CONFIG, UNIX_SYSTEM_TB_CONFIG);
+}
+
+/**
+ * @brief Sets the register r30 with the right module count,
+ * needed for libc's __modinit. Libc uses this register (negated)
+ * in order to allocate the proper size on stack to fit the result
+ * returned by __loadx.
+ *
+ * @param uc Unicorn context.
+ */
+void unix_init_module_count(uc_engine *uc)
+{
+	s32 c;
+	struct loaded_coff *lc = loaded_modules;
+	for (c = 0; lc; lc = lc->next, c++);
+	c = -c;
+	uc_reg_write(uc, UC_PPC_REG_30, &c);
 }
 
 /**

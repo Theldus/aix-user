@@ -118,6 +118,61 @@ static int emu_fcfid(uc_engine *uc, u32 insn, u32 pc)
 }
 
 /**
+ * Load (zero/sign-extended) the contents of the memory of rB+rA
+ * into the floating-point register FRT.
+ *  0x7c004eee:
+ *      26     21     16     11
+ *  (31)    (FRT)  (RA)   (RB)
+ *  011111  00000  00000  01001  1101110111 0
+ *  lfiwzx  f0     0      9
+ *
+ * Or:
+ *   EA  = (rA ? gpr[rA] : 0) + gpr[rB];
+ *   FRTn = Zero/Sign-Extend ( MEM[EA, 4] )
+ *
+ * @note
+ *   lfiwzx: Seems to be added at the PowerISA v2.06
+ *   lfiwax: Seems to be added at v2.05.
+ */
+static int do_lfiwzx_lfiwax(uc_engine *uc, u32 insn, u32 pc, int sign)
+{
+	u32 frt = (insn >> 21) & 0x1F;
+	u32 rA  = (insn >> 16) & 0x1F;
+	u32 rB  = (insn >> 11) & 0x1F;
+	u32 b, ea, rB_v, mem;
+	u64 frt_v;
+
+	/* b equals 0 if rA is 0, otherwise, b is the rA value, */
+	b = 0;
+	if (rA)
+		uc_reg_read(uc, UC_PPC_REG_0 + rA, &b);
+	uc_reg_read(uc, UC_PPC_REG_0 + rB, &rB_v);
+
+	ea    = b + rB_v;
+	uc_mem_read(uc, ea, &mem, 4);
+	mem   = frombe32(mem);
+
+	if (!sign) frt_v = (u64)mem;
+	else       frt_v = (u64)(s64)(s32)mem; /* EXTS(MEM(EA, 4)). */
+
+	uc_reg_write(uc, UC_PPC_REG_FPR0 + frt, &frt_v);
+	if (!sign)
+		INSN("(%08x) lfiwzx(f%d,%u,%u) = %" PRIx64"\n", pc,frt,rA,rB,frt_v);
+	else
+		INSN("(%08x) lfiwax(f%d,%u,%u) = %" PRIx64"\n", pc,frt,rA,rB,frt_v);
+	return 0;
+}
+
+/* Emulate lfiwzx. */
+static int emu_lfiwzx(uc_engine *uc, u32 insn, u32 pc) {
+	return do_lfiwzx_lfiwax(uc, insn, pc, 0);
+}
+/* Emulate lfiwax. */
+static int emu_lfiwax(uc_engine *uc, u32 insn, u32 pc) {
+	return do_lfiwzx_lfiwax(uc, insn, pc, 1);
+}
+
+/**
  * @brief Main interrupt hook for instruction emulation
  * @param uc    Unicorn context.
  * @param intno Exception/interrup number.
@@ -145,10 +200,27 @@ static void hook_illegal_insn(uc_engine *uc, u32 intno, void *user_data)
 	subop  = get_subop(insn);
 
 	/* Dispatch to appropriate emulator */
-	if (opcode == 31 && subop == 508) {
-		/* cmpb - Compare Bytes */
-		if (emu_cmpb(uc, insn, pc) == 0)
-			return;
+	if (opcode == 31) {
+		switch (subop) {
+			/* cmpb - Compare Bytes */
+			case 508:
+				if (emu_cmpb(uc, insn, pc) == 0)
+					return;
+				break;
+			/* lfiwax - Load FP as Integer Word, Sign-Extending it. */
+			case 855:
+				if (emu_lfiwax(uc, insn, pc) == 0)
+					return;
+				break;
+			/* lfiwzx - Load FP as Integer Word, Zero-Extending it. */
+			case 887:
+				if (emu_lfiwzx(uc, insn, pc) == 0)
+					return;
+				break;
+			/* Not handled. */
+			default:
+				break;
+		}
 	} else if (opcode == 63 && subop == 846) {
 		/* fcfid - Floating Convert From Integer Doubleword */
 		if (emu_fcfid(uc, insn, pc) == 0)

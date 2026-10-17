@@ -83,38 +83,48 @@ static int emu_cmpb(uc_engine *uc, u32 insn, u32 pc)
 }
 
 /**
- * @brief fcfid FRT,FRB
+ * @brief fcfid FRT,FRB  // fcfids FRT,FRB
  * Floating Convert From Integer Doubleword: convert 64-bit signed
- * integer in FRB to double-precision float and store in FRT.
+ * integer in FRB to double/single-precision float and store in FRT.
  *
  * @param uc   Unicorn context.
  * @param insn Instruction to emulate.
  * @param pc   Program counter.
  *
- * @note The PowerISA v2.04 states that these registers are also
+ * @note The PowerISA v2.04/v2.06 states that these registers are also
  * affected, i'm not touching any of them her:
  *   FPRF FR FI
  *   FX XX
  *   CR1
+ *
+ * fcfid:  Added at PowerISA v2.04
+ * fcfids: Added at PowerISA v2.06
  */
-static int emu_fcfid(uc_engine *uc, u32 insn, u32 pc)
+static int do_fcfid_fcfids(uc_engine *uc, u32 insn, u32 pc, int single)
 {
-	uint64_t ival;
-	double result;
 	u32 frt = (insn >> 21) & 0x1F;
 	u32 frb = (insn >> 11) & 0x1F;
+	u64 ival;
+	double result;
 
-	/* Read the 64-bit integer value from FRB */
 	uc_reg_read(uc, UC_PPC_REG_FPR0 + frb, &ival);
-
-	/* Convert signed 64-bit integer to double */
-	result = (double)(int64_t)ival;
-
-	/* Write result back as 64-bit IEEE 754 double */
+	if (single) result = (double)(float)(int64_t)ival;
+	else        result = (double)(int64_t)ival;
 	uc_reg_write(uc, UC_PPC_REG_FPR0 + frt, &result);
 
-	INSN("(%08x) fcfid(f%d,f%d) = %f\n", pc,frt,frb,result);
+	if (!single) INSN("(%08x) fcfid(f%d,f%d)  = %f\n", pc,frt,frb,result);
+	else         INSN("(%08x) fcfids(f%d,f%d) = %f\n", pc,frt,frb,result);
 	return 0;
+}
+
+/* Emulate fcfid. */
+static int emu_fcfid(uc_engine *uc, u32 insn, u32 pc) {
+	return do_fcfid_fcfids(uc, insn, pc, 0);
+}
+
+/* Emulate fcfids. */
+static int emu_fcfids(uc_engine *uc, u32 insn, u32 pc) {
+	return do_fcfid_fcfids(uc, insn, pc, 1);
 }
 
 /**
@@ -173,6 +183,46 @@ static int emu_lfiwax(uc_engine *uc, u32 insn, u32 pc) {
 }
 
 /**
+ * Counts the amount of set bits in rS and saves into rA.
+ *      26     21     16     11
+ *  (31)     (RS)   (RA)   ////
+ *  011111  00110  00110  00000  101111010 0
+ *  popcntw  r6     r6
+ *
+ * Or: rA = popcnt(rS)
+ *
+ * @note popcntw seems to be added at PowerISA v2.06
+ */
+static int emu_popcntw(uc_engine *uc, u32 insn, u32 pc)
+{
+	u32 rA  = (insn >> 16) & 0x1F;
+	u32 rS  = (insn >> 21) & 0x1F;
+	u32 rS_v;
+
+	uc_reg_read(uc, UC_PPC_REG_0 + rS, &rS_v);
+	rS_v = __builtin_popcount(rS_v);
+	uc_reg_write(uc, UC_PPC_REG_0 + rA, &rS_v);
+
+	INSN("(%08x) popcntw(r%d,r%d) = %x\n", pc,rS,rA,rS_v);
+	return 0;
+}
+
+/* Instruction handlers. */
+typedef int (*insn_handler)(uc_engine *, u32, u32);
+struct insns_handlers {
+	u32 opcode;
+	u32 subop;
+	insn_handler fn;
+} hndlers[] = {
+	{.opcode = 31, .subop = 378, .fn = emu_popcntw},
+	{.opcode = 31, .subop = 508, .fn = emu_cmpb},
+	{.opcode = 31, .subop = 855, .fn = emu_lfiwax},
+	{.opcode = 31, .subop = 887, .fn = emu_lfiwzx},
+	{.opcode = 63, .subop = 846, .fn = emu_fcfid},
+	{.opcode = 59, .subop = 846, .fn = emu_fcfids},
+};
+
+/**
  * @brief Main interrupt hook for instruction emulation
  * @param uc    Unicorn context.
  * @param intno Exception/interrup number.
@@ -181,6 +231,7 @@ static int emu_lfiwax(uc_engine *uc, u32 insn, u32 pc) {
 static void hook_illegal_insn(uc_engine *uc, u32 intno, void *user_data)
 {
 	u32 pc, insn;
+	size_t amnt;
 	u32 opcode;
 	u32 subop;
 	((void)user_data);
@@ -200,31 +251,14 @@ static void hook_illegal_insn(uc_engine *uc, u32 intno, void *user_data)
 	subop  = get_subop(insn);
 
 	/* Dispatch to appropriate emulator */
-	if (opcode == 31) {
-		switch (subop) {
-			/* cmpb - Compare Bytes */
-			case 508:
-				if (emu_cmpb(uc, insn, pc) == 0)
-					return;
-				break;
-			/* lfiwax - Load FP as Integer Word, Sign-Extending it. */
-			case 855:
-				if (emu_lfiwax(uc, insn, pc) == 0)
-					return;
-				break;
-			/* lfiwzx - Load FP as Integer Word, Zero-Extending it. */
-			case 887:
-				if (emu_lfiwzx(uc, insn, pc) == 0)
-					return;
-				break;
-			/* Not handled. */
-			default:
+	amnt = sizeof(hndlers) / sizeof(hndlers[0]);
+	for (size_t i = 0; i < amnt; i++) {
+		if (hndlers[i].opcode == opcode && hndlers[i].subop == subop) {
+			if (hndlers[i].fn(uc, insn, pc) >= 0)
+				return;
+			else
 				break;
 		}
-	} else if (opcode == 63 && subop == 846) {
-		/* fcfid - Floating Convert From Integer Doubleword */
-		if (emu_fcfid(uc, insn, pc) == 0)
-			return;
 	}
 
 	/* If we get here, it's an unhandled instruction */

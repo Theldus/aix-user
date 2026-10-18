@@ -213,7 +213,7 @@ struct xcoff {
 	struct xcoff_file_hdr32 hdr; /* File header.      */
 	struct xcoff_aux_hdr32  aux; /* Auxiliary header. */
 	/* Section headers. */
-	struct xcoff_sec_hdr32 secs[16]; /* All sections. */
+	struct xcoff_sec_hdr32 secs[20]; /* All sections. */
 	/* Loader. */
 	struct {
 		struct xcoff_ldr_hdr32 hdr;

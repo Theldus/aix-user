@@ -18,6 +18,29 @@
 #include <string.h>
 
 /**
+ * @Brief Gives a more detailed execve trace by also showing
+ * the arguments passed to the other process.
+ *
+ * @param uc   Unicorn context.
+ * @param path XCOFF binary path that will be executed (host-based, not guest)
+ * @param argv Argument list (host-accessible) that will be passed to
+ *             the execve syscall.
+ * @param envp Environment pointer list (guest-accessible).
+ */
+static void
+trace_execve(uc_engine *uc, const char *path, char **argv, u32 envp) {
+	u32 trace_pc;
+	if (!args.trace_syscall)
+		return;
+	uc_reg_read(uc, UC_PPC_REG_LR, &trace_pc);
+	trace_pc -= 4;
+	fprintf(stderr, "TRACE (%08x) execve(\"%s\", [", trace_pc, path);
+	for (; *argv; argv++)
+		fprintf(stderr, "%s,", *argv);
+	fprintf(stderr, "], 0x%x) = <...>\n", envp);
+}
+
+/**
  * @brief Converts an userspace AIX array provided by @p array, into a
  * readable host array. Mainly used to convert argv/envp.
  *
@@ -172,6 +195,8 @@ int aix_execve(uc_engine *uc)
 	/* Convert from sysroot. */
 	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
 		goto out;
+
+	trace_execve(uc, h_path, h_argv, envp);
 
 	ret = execve(vfs_path, h_argv, h_envp);
 	if (ret < 0) {

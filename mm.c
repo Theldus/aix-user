@@ -758,18 +758,39 @@ static void prepare_env_paths(void)
  * @param argv Argument list, NULL-terminated
  * @param envp Environment variables list, NULL-terminated
  */
-void mm_init_stack(int argc, const char **argv, const char **envp)
+void mm_init_stack(int argc, char **argv, char **envp)
 {
-	const char **p;
+	char *argv0_bck;
+	char argv0[1024];
+	size_t argv0_len;
 	u32 stack_data;  /* Points to the strings itself. */
 	u32 stack_ptr;   /* Points to the strings ptrs.   */
 	int env_count;
 	size_t bytes;
 	u32 stack;
+	char **p;
 	u32 val;
 	int i;
 
 	prepare_env_paths();
+
+	/* If the 'argv[0]' is an absolute path, we convert to the
+	 * sysroot-equivalent path. This way, programs that relies
+	 * on this (such as GCC) will always have a path inside
+	 * sysroot.
+	 */
+	if ((argv0_len = strlen(argv[0])) >= sizeof argv0)
+		errx(1, "argv[0] is too big!\n");
+	memcpy(argv0, argv[0], argv0_len);
+	argv0[argv0_len] = '\0';
+
+	if (*argv0 == '/') {
+		if (!vfs_host2guest(args.sysroot, argv0))
+			errx(1, "Unable to convert argv[0] to a sysroot path!\n");
+	}
+
+	argv0_bck = argv[0];
+	argv[0]   = argv0;
 
 	bytes     = 0;
 	env_count = 0;
@@ -825,6 +846,9 @@ void mm_init_stack(int argc, const char **argv, const char **envp)
 	 */
 	stack -= 16*4;
 	uc_reg_write(g_uc, UC_PPC_REG_1, &stack);
+
+	/* Restore original argv[0], since load_xcoff_file() uses it. */
+	argv[0] = argv0_bck;
 }
 
 /**

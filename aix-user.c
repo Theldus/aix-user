@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 		errx(1, "Unable to create VM: %s\n", uc_strerror(err));
 
 	mm_init(uc);
-	mm_init_stack(argc, (const char **)argv, (const char **)environ);
+	mm_init_stack(argc, argv, environ);
 	unix_init(uc);
 	insn_emu_init(uc);
 

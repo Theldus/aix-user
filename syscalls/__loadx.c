@@ -36,6 +36,39 @@ union aix_dl_info {
 	} e;
 };
 
+/* Ignore list:
+ * Sometimes I dont want to deal with some library or something else.
+ * libpthreads.a for example attempts to load and do *so many things*
+ * at their modinit that makes me crazy, and... I *do not* support
+ * thread, this is clearly stated in the README.md.
+ *
+ * So if you (user) attempt to use something that uses libpthread.a,
+ * it will happilly attempt to run, maybe the thread usage is buried
+ * deep down in an obscure code path and you might be lucky to never
+ * reach it.
+ *
+ * GCC for instance, makes use of libpthreads at the 'cc1' binary.
+ * 'cc1' binary itself *do not* use libpthreads, but libzstd.a (one
+ * of its dependencies, does). However, libzstd seems to be only
+ * used for LTO, and LTO is disabled... so... useless here.
+ */
+const char *const ignore_modinits[] = {
+	"/libpthreads.a"
+};
+
+/**
+ *
+ */
+static int is_ignored_lib(struct loaded_coff *lc) {
+	size_t i;
+	size_t len = sizeof(ignore_modinits)/sizeof(ignore_modinits[0]);
+	for (i = 0; i < len; i++) {
+		if (strstr(lc->name, ignore_modinits[i]))
+			return 1;
+	}
+	return 0;
+}
+
 /**
  * @brief For a given loaded XCOFF, checks if the module has the
  * '__rtinit' symbol defined or not. The presence of this symbol
@@ -110,6 +143,8 @@ int aix___loadx(uc_engine *uc)
 		rem -= sizeof(*dl_info);
 
 		for (; lc && rem; lc = lc->next, idx++) {
+			if (is_ignored_lib(lc))
+				continue;
 			if (!module_has_rtinit(&lc->xcoff))
 				continue;
 			if (rem < (s32)sizeof(*dl_info))

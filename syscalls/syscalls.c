@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "syscalls.h"
+#include "log.h"
 #include "mm.h"
 #include "util.h"
 #include "third_party/khash.h"
@@ -48,7 +49,7 @@
 #define SYS(...) \
 	do { \
 		if (args.trace_loader) \
-		  fprintf(stderr, "[syscalls] " __VA_ARGS__); \
+		  log_printf("[syscalls] " __VA_ARGS__); \
 	} while (0)
 
 /* Next available address for /unix function descriptors. */

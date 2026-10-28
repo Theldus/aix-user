@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "log.h"
 #include "mm.h"
 #include "util.h"
 #include "loader.h"
@@ -27,7 +28,7 @@
 #define MM(...) \
 	do { \
 		if (args.trace_memory) \
-		  fprintf(stderr, "[mm] " __VA_ARGS__); \
+		  log_printf("[mm] " __VA_ARGS__); \
 	} while (0)
 
 /* Memory Management. */

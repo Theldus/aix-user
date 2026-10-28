@@ -13,7 +13,7 @@ CFLAGS += -I$(CURDIR)/.deps-unicorn/include -O3 -Wall -Wno-unused-variable
 LDLIBS +=   $(CURDIR)/.deps-unicorn/lib/libunicorn.a
 
 OBJS  = aix-user.o unix.o xcoff.o gdb.o loader.o mm.o bigar.o
-OBJS += util.o milicodes/milicode.o insn_emu.o vfs.o
+OBJS += util.o milicodes/milicode.o insn_emu.o vfs.o log.o
 
 # Syscalls
 OBJS += syscalls/syscalls.o syscalls/errno.o
@@ -111,15 +111,15 @@ aix-user: $(OBJS)
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-tools/aix-ar: tools/aix-ar.o bigar.o
+tools/aix-ar: tools/aix-ar.o bigar.o log.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-tools/aix-dump: tools/aix-dump.o xcoff.o
+tools/aix-dump: tools/aix-dump.o xcoff.o log.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-tools/aix-ldd: tools/aix-ldd.o xcoff.o bigar.o
+tools/aix-ldd: tools/aix-ldd.o xcoff.o bigar.o log.o
 	@echo "  LINK    $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 

@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <unicorn/unicorn.h>
 
+#include "log.h"
 #include "loader.h"
 #include "mm.h"
 #include "util.h"
@@ -27,8 +28,8 @@ static int g_depth = -1;
 #define LOADER(...) \
  do { \
    if (args.trace_loader) { \
-     fprintf(stderr, "[loader] %*s", g_depth, ""); \
-     fprintf(stderr, __VA_ARGS__); \
+     log_printf("[loader] %*s", g_depth, ""); \
+     log_printf(__VA_ARGS__); \
    } \
  } while (0)
 

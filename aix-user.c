@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <unicorn/unicorn.h>
 
+#include "log.h"
 #include "gdb.h"
 #include "loader.h"
 #include "mm.h"
@@ -24,12 +25,13 @@ extern char **environ;
 /* Command-line arguments. */
 struct args args = {
 	.lib_path      = ".",
-	.sysroot  = "/",
+	.sysroot       = "/",
 	.trace_syscall = 0,
 	.trace_loader  = 0,
 	.trace_memory  = 0,
 	.gdb_port      = 1234,
 	.enable_gdb    = 0,
+	.log_file      = NULL,
 };
 
 /* XCOFF file info. */
@@ -47,17 +49,14 @@ static void usage(const char *prgname)
 {
 	fprintf(stderr, "Usage: %s [options] program [arguments...]\n", prgname);
 	fprintf(stderr,
-		"Options:\n"
-		"  -L <path> Set library search path (default: current directory)\n"
-		"            Env var: AIX_USER_LIB_PATH\n\n"
-		"  -r <path> Set the sysroot path for the VM (default: /)\n"
-		"            Env var: AIX_USER_SYSROOT_PATH\n\n"
-		"  -s        Enable syscall trace\n"
-		"            Env var: AIX_USER_SYS_TRACE\n\n"
-		"  -l        Enable loader/binder/milicode/syscall trace\n"
-		"            Env var: AIX_USER_LOADER_TRACE\n\n"
-		"  -m        Enable memory subsystem trace\n"
-		"            Env var: AIX_USER_TRACE_MEM\n\n"
+		"Options:                                               Env var:\n"
+		"  -L <path> Library search path (default: current dir) AIX_USER_LIB_PATH\n"
+		"  -r <path> Sysroot path for the VM (default: /)       AIX_USER_SYSROOT_PATH\n"
+		"  -s        Enable syscall trace                       AIX_USER_SYS_TRACE\n"
+		"  -l        Trace loader/binder/milicode/syscall       AIX_USER_LOADER_TRACE\n"
+		"  -m        Enable memory subsystem trace              AIX_USER_TRACE_MEM\n"
+		"  -f <file> Write logs to <file>                       AIX_USER_LOG_FILE\n"
+		"  -n        Disables all logs                          AIX_USER_LOG_OFF\n"
 		"  -d        Enable GDB server\n"
 		"  -g <port> GDB server port (default: 1234)\n"
 		"  -h        Show this help\n\n"
@@ -85,6 +84,10 @@ static void parse_env_args(void)
 		args.trace_loader = 1;
 	if ((env = getenv("AIX_USER_TRACE_MEM")) && strcmp("", env))
 		args.trace_memory = 1;
+	if ((env = getenv("AIX_USER_LOG_FILE")) && strcmp("", env))
+		args.log_file = env;
+	if ((env = getenv("AIX_USER_LOG_OFF")) && strcmp("", env))
+		args.log_file = "/dev/null";
 }
 
 /**
@@ -128,7 +131,7 @@ static void parse_args(int *argc, char ***argv)
 	char **orig_argv = *argv;
 
 	/* Parse options. */
-	while ((c = getopt(*argc, *argv, "+hL:r:slmg:d")) != -1)
+	while ((c = getopt(*argc, *argv, "+hL:r:slf:nmg:d")) != -1)
 	{
 		switch (c) {
 		case 'h':
@@ -149,6 +152,14 @@ static void parse_args(int *argc, char ***argv)
 		case 'l':
 			args.trace_loader = 1;
 			setenv("AIX_USER_LOADER_TRACE", "1", 1);
+			break;
+		case 'f':
+			args.log_file = optarg;
+			setenv("AIX_USER_LOG_FILE", optarg, 1);
+			break;
+		case 'n':
+			args.log_file = "/dev/null";
+			setenv("AIX_USER_LOG_OFF", args.log_file, 1);
 			break;
 		case 'm':
 			args.trace_memory = 1;
@@ -201,6 +212,9 @@ int main(int argc, char **argv)
 	parse_env_args();
 	parse_args(&argc, &argv);
 	program = argv[0];
+
+	/* Initialize log. */
+	log_init(args.log_file);
 
 	/* Initialize our AIX+PPC emulator =). */
 	err = uc_open(UC_ARCH_PPC, UC_MODE_PPC32|UC_MODE_BIG_ENDIAN, &uc);

@@ -46,7 +46,7 @@
 #define UNIX(...) \
 	do { \
 		if (args.trace_loader) \
-		  fprintf(stderr, "[unix] " __VA_ARGS__); \
+		  log_printf("[unix] " __VA_ARGS__); \
 	} while (0)
 
 /**

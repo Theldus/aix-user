@@ -10,15 +10,17 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <unicorn/unicorn.h>
+#include "log.h"
 
 struct args {
-	const char *lib_path;     /* -L: library search path  */
-	const char *sysroot;      /* -r: sysroot path, default: '/' */
-	int trace_syscall;        /* -s: enable syscall trace */
-	int trace_loader;         /* -l: enable loader/binder trace */
-	int trace_memory;         /* -m: enable memory subsys trace */
-	int gdb_port;             /* -g: GDB server port      */
-	int enable_gdb;           /* -d: enable GDB server    */
+	const char *lib_path;     /* -L: library search path           */
+	const char *sysroot;      /* -r: sysroot path, default: '/'    */
+	const char *log_file;     /* -f: log file path, default: NULL. */
+	int trace_syscall;        /* -s: enable syscall trace          */
+	int trace_loader;         /* -l: enable loader/binder trace    */
+	int trace_memory;         /* -m: enable memory subsys trace    */
+	int gdb_port;             /* -g: GDB server port               */
+	int enable_gdb;           /* -d: enable GDB server             */
 };
 extern struct args args;
 
@@ -34,7 +36,7 @@ typedef  int64_t s64;
 #define min(x,y) ((x)<(y)?(x):(y))
 #define max(x,y) ((x)>(y)?(x):(y))
 
-#define warn(...) fprintf(stderr, __VA_ARGS__)
+#define warn(...) log_printf(__VA_ARGS__)
 #define errx(code,...) \
 	do {\
 		fprintf(stderr, __VA_ARGS__);\

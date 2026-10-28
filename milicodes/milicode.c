@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <time.h>
+#include "log.h"
 #include "mm.h"
 #include "util.h"
 #include "syscalls.h"
@@ -72,8 +73,8 @@ static inline void *arg_ptr(int n, u32 *vm) {
 #define MC(...) \
 	do { \
 		if (args.trace_loader) { \
-		  fprintf(stderr, "[milicode] "); \
-		  fprintf(stderr, __VA_ARGS__); \
+		  log_printf("[milicode] "); \
+		  log_printf(__VA_ARGS__); \
 		} \
 	} while (0)
 

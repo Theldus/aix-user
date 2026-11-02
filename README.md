@@ -55,6 +55,13 @@ AIX libraries are located elsewhere, you can specify the library path with `-L`:
 $ ./aix-user -L /path/to/aix/libs <aix_binary> [arguments...]
 ```
 
+> [!NOTE]
+> If you don't have access to an AIX environment to extract the relevant
+libraries and binaries, you might want to take a look at:
+[Minimal setup via Standalone Diagnostics CD].
+
+[Minimal setup via Standalone Diagnostics CD]: docs/MINIMAL_SETUP_THROUGH_SD_CD.md
+
 ### Examples
 Running a simple test binary that prints arguments and environment variables:
 ```bash

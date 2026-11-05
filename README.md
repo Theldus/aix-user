@@ -238,6 +238,7 @@ edge cases too.
 | 476            | rename             | Implemented           |
 | 477            | renameat           | Implemented           |
 | 480            | fstatx             | Partial               |
+| 483            | symlink            | Implemented           |
 | 485            | readlink           | Implemented           |
 | 489            | umask              | Implemented           |
 | 493            | unamex             | Implemented           |

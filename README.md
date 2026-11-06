@@ -224,6 +224,7 @@ edge cases too.
 | 415            | fchmod             | Implemented           |
 | 416            | chmod              | Implemented           |
 | 418            | chown              | Implemented           |
+| 420            | lchown             | Implemented           |
 | 421            | fchown             | Implemented           |
 | 447            | ktruncate          | Implemented           |
 | 448            | kftruncate         | Implemented           |

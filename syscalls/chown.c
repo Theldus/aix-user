@@ -12,21 +12,8 @@
 #include "mm.h"
 #include "vfs.h"
 
-/**
- * @brief chown syscall handler.
- *
- * Handles the AIX chown syscall.
- * This should be aligned with the POSIX chown(2).
- *
- * AIX calling convention:
- *   r3 = pathname 
- *   r4 = owner user id
- *   r5 = group id
- *
- * Return value (in r3):
- *   If success returns 0, otherwise, -1 with errno set.
- */
-int aix_chown(uc_engine *uc)
+/* chown/lchown syscall helper function. */
+static int do_lchown_chown(uc_engine *uc, int deref)
 {
 	char vfs_path[PATH_MAX+1];
 	char *h_path = NULL;
@@ -46,17 +33,46 @@ int aix_chown(uc_engine *uc)
 		goto out;
 	}
 
-	if (vfs_resolve(h_path, VFS_FOLLOW, vfs_path) < 0)
+	if (vfs_resolve(h_path,
+		(deref ? VFS_FOLLOW : VFS_NOFOLLOW), vfs_path) < 0) {
 		goto out;
+	}
 
-	ret = chown(vfs_path, uid, gid);
+	if (deref) ret =  chown(vfs_path, uid, gid);
+	else       ret = lchown(vfs_path, uid, gid);
+
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;
 	}
-
-	ret = 0;
 out:
-	TRACE("chown", "\"%s\", %d, %d", h_path, uid, gid);
+	TRACE((deref ? "chown" : "lchown"),
+		"\"%s\", %d, %d", h_path, uid, gid);
 	return ret;
+}
+
+/**
+ * @brief chown syscall handler.
+ *
+ * Handles the AIX chown syscall.
+ * This should be aligned with the POSIX chown(2).
+ *
+ * AIX calling convention:
+ *   r3 = pathname
+ *   r4 = owner user id
+ *   r5 = group id
+ *
+ * Return value (in r3):
+ *   If success returns 0, otherwise, -1 with errno set.
+ */
+int aix_chown(uc_engine *uc) {
+	return do_lchown_chown(uc, 1);
+}
+
+/**
+ * @brief lchown syscall handler.
+ * Same as chown, but does not dereference symlinks.
+ */
+int aix_lchown(uc_engine *uc) {
+	return do_lchown_chown(uc, 0);
 }

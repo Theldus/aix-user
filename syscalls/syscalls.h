@@ -138,5 +138,6 @@ extern int aix_readlink(uc_engine *uc);
 extern int aix_appsetrlimit(uc_engine *uc);
 extern int aix_setrlimit64(uc_engine *uc);
 extern int aix_symlink(uc_engine *uc);
+extern int aix_lchown(uc_engine *uc);
 
 #endif /* SYSCALLS_H. */

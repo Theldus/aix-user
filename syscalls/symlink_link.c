@@ -12,22 +12,10 @@
 #include "mm.h"
 #include "vfs.h"
 
-/**
- * @brief symlink syscall handler.
- *
- * Handles the AIX symlink syscall.
- * This should be aligned with the POSIX symlink(2).
- *
- * AIX calling convention:
- *   r3 = path1 (target file)
- *   r4 = path2 (link path)
- *
- * Return value (in r3):
- *   If success returns 0, otherwise, -1 with errno set.
- */
-int aix_symlink(uc_engine *uc)
+/* sym/hard link impl. */
+static int do_hard_symlink(uc_engine *uc, int hard)
 {
-	int ret;
+	int ret       = -1;
 	char *h_path1 = NULL;
 	char *h_path2 = NULL;
 	char vfs_path1[PATH_MAX+1];
@@ -35,7 +23,6 @@ int aix_symlink(uc_engine *uc)
 	u32 path1  = read_1st_arg();
 	u32 path2  = read_2nd_arg();
 
-	ret = -1;
 	/* path1. */
 	if (!(h_path1 = mm_vm2host(path1))) {
 		unix_set_errno(AIX_EFAULT);
@@ -52,13 +39,41 @@ int aix_symlink(uc_engine *uc)
 	if (vfs_resolve(h_path2, VFS_NOFOLLOW, vfs_path2) < 0)
 		goto out;
 
-	/* create symlink. */
-	ret = symlink(vfs_path1, vfs_path2);
+	/* create sym/hard link. */
+	if (!hard) ret = symlink(vfs_path1, vfs_path2);
+	else       ret =    link(vfs_path1, vfs_path2);
+
 	if (ret < 0) {
 		unix_set_conv_errno(errno);
 		goto out;
 	}
 out:
-	TRACE("symlink", "%s, %s", h_path1, h_path2);
+	TRACE((hard ? "link" : "symlink"),
+		"\"%s\", \"%s\"", h_path1, h_path2);
 	return ret;
+}
+
+/**
+ * @brief symlink syscall handler.
+ *
+ * Handles the AIX symlink syscall.
+ * This should be aligned with the POSIX symlink(2).
+ *
+ * AIX calling convention:
+ *   r3 = path1 (target file)
+ *   r4 = path2 (link path)
+ *
+ * Return value (in r3):
+ *   If success returns 0, otherwise, -1 with errno set.
+ */
+int aix_symlink(uc_engine *uc) {
+	return do_hard_symlink(uc, 0);
+}
+
+/* @brief hardlink syscall handler.
+ * Same behavior as symlink(2), just calls a different
+ * function.
+ */
+int aix_link(uc_engine *uc) {
+	return do_hard_symlink(uc, 1);
 }

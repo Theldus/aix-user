@@ -232,6 +232,7 @@ edge cases too.
 | 450            | ftruncate          | Implemented           |
 | 451            | getdirent64        | Implemented           |
 | 454            | kioctl             | Partial               |
+| 455            | link               | Implemented           |
 | 460            | mkdir              | Implemented           |
 | 461            | mkdirat            | Implemented           |
 | 464            | mntctl             | Stub                  |

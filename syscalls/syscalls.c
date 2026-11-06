@@ -172,6 +172,7 @@ static struct sys_table_entry sys_table[] = {
 	{"setrlimit64",    aix_setrlimit64},
 	{"symlink",        aix_symlink},
 	{"lchown",         aix_lchown},
+	{"link",           aix_link},
 };
 
 KHASH_MAP_INIT_STR(systable, const struct sys_table_entry *);

@@ -166,10 +166,15 @@ Since the scope is huge and AIX has hundreds of undocumented syscalls (and
 other features), the approach is 'binary-based': when the support for a new 
 binary is wanted, new features are brought in to support that specific binary.
 
+> **Good News**: `aix-user` now supports GGC!, more info in:
+> [Running AIX's GCC via `aix-user`]
+
 **Currently tested binaries (AIX 7.2+7.3):** All binaries under [tests/syscalls],
 plus: `ar`, `cal`, `cat`, `chmod`, `chown`, `cp`, `cut`, `date`, `dump`, `echo`,
 `env`, `expr`, `grep`, `head`, `kill`, `mv`, `od`, `printf`, `pwd`, `rm`, `sed`,
 `sleep`, `tail`, `tee`, `test`, `tr`, `uname`, `uniq`, `wc`, `yes`.
+
+[Running AIX's GCC via `aix-user`]: docs/gcc/README.md
 
 **Binaries that works, but with possible caveats**: The list below contains
 binaries that works but might have some hidden issues due to features

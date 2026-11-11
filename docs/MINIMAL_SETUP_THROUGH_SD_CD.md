@@ -1,7 +1,7 @@
 # Minimal setup via Standalone Diagnostics CD
 As everyone knows, AIX is a closed-source, proprietary IBM OS.
 
-Unlike Windows and macOS, there are no official images available for download: you either get access through your employer or through IBM Cloud, for instance: [PowerVS2500: Try IBM Power Virtual Server - Free for Up to 90 Days].
+Unlike Windows and macOS, there are no official images available for download: you either get access, for example, through your employer (or similar) or through IBM Cloud, for instance: [PowerVS2500: Try IBM Power Virtual Server - Free for Up to 90 Days].
 
 I _could_ attempt to write AIX's libraries myself, and then, there would be no dependency on AIX whatsoever, similar to what Wine does. However, I already have too many headaches with the VM itself, I dont want to have _more_ things to worry about.
 
@@ -32,16 +32,18 @@ boot         libasl.a  libcfg.a   libcur.a        liberrlog.a   libpslog_wrap.a 
 
 The remaining question is: how to extract these files from the ISO image?
 
+### Extracting all the sysroot
 > [!WARNING]
 > The extracted files are IBM's copyrighted binaries, this is meant for local use only, do not redistribute them!.
 
-### Extracting all the sysroot
 I would like to say that all that's needed is to mount the ISO image, copy the files and call it a day, but unfortunately it is not this way: the most interesting part resides inside a file named 'bootfile.exe'. This file contains the kernel and ramdisk inside, so it is similar to vmlinux+initramfs all in one place. Unfortunately, I don't know how to mount or extract the files inside it, so the only thing left is to actually boot this image and extract them inside the live system.
 
 For this, we need to:
 - QEMU (tested with v10.2.1), built for `ppc64-softmmu`, or `--target-list=all` (default).
-- [CD72580.ISO]
+- [CD72580.ISO] [^1] (~160MiB)
 - Xorriso (optional)
+
+[^1]: Older images can be found [here](https://download.boulder.ibm.com/ibmdl/pub/software/server/diags/).
 
 QEMU build is pretty simple:
 ```bash
